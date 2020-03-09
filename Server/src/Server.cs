@@ -111,7 +111,7 @@ namespace RunGun.Server
 				if (client.keepalive > 10) {
 					// TODO: client disconnect
 					clients.Remove(client);
-					SendToAll("left " + client.nickname);
+					SendToAll(NetMsg.PEER_LEFT + client.nickname);
 				}
 			}
 		}
@@ -139,67 +139,70 @@ namespace RunGun.Server
 		void HandleConnectAttempt(Received data, string[] words) {
 			string nickname = words[1];
 			var client = new Client(data.Sender, nickname);
-			SendToAll("join " + client.nickname);
+			SendToAll(NetMsg.PEER_JOINED + client.nickname);
 			clients.Add(client);
 
 			// sends map to client
 			foreach (LevelGeometry gm in geometry) {
-				SendToClient(client, String.Format("geom {0} {1} {2} {3}", gm.Position.X, gm.Position.Y, gm.size.X, gm.size.Y));
+				SendToClient(client, String.Format("{0} {1} {2} {3} {4}", NetMsg.DL_LEVEL_GEOMETRY, gm.Position.X, gm.Position.Y, gm.size.X, gm.size.Y));
 			}
 		}
 
 		void HandleDisconnect(Client client) {
 			clients.Remove(client);
-			SendToAll("left " + client.nickname);
+			SendToAll(NetMsg.PEER_LEFT + client.nickname);
 		}
 
 		void HandleChat() { }
 
 		void HandlePing(Client client) {
-			SendToClient(client, "pong");
-			//udpServer.Reply("pong", received.Sender);
+			SendToClient(client, NetMsg.PONG + "");
 			client.keepalive = 0;
 		}
-
 
 		void HandleNetworkMessage(Received received) {
 			string[] words = received.Message.Split(' ');
 
-			if (words[0] == "connect")
-				HandleConnectAttempt(received, words);
 
+			NetMsg command = (NetMsg)int.Parse(words[0]);
+			// has to be specially handled anyway..
+			if (command == NetMsg.CONNECT) {
+				HandleConnectAttempt(received, words);
+				return;
+			}
+		
 			// no other messages should be accepted from not-connected
 			if (!IsClientConnected(received.Sender))
 				return;
 
 			var client = GetClient(received.Sender);
 
-			switch (words[0]) {
-				case "disconnect":
+			switch (command) {
+				case NetMsg.DISCONNECT:
 					HandleDisconnect(client);
 					break;
-				case "chat":
+				case NetMsg.CHAT:
 					HandleChat();
 					break;
-				case "ping":
+				case NetMsg.PING:
 					HandlePing(client);
 					break;
-				case "move_left_start":
+				case NetMsg.C_LEFT_DOWN:
 					client.character.MoveLeft = true;
 					break;
-				case "move_left_end":
+				case NetMsg.C_LEFT_UP:
 					client.character.MoveLeft = false;
 					break;
-				case "move_right_start":
+				case NetMsg.C_RIGHT_DOWN:
 					client.character.MoveRight = true;
 					break;
-				case "move_right_end":
+				case NetMsg.C_RIGHT_UP:
 					client.character.MoveRight = false;
 					break;
-				case "move_jump_start":
+				case NetMsg.C_JUMP_DOWN:
 					client.character.MoveJump = true;
 					break;
-				case "move_jump_end":
+				case NetMsg.C_JUMP_UP:
 					client.character.MoveJump = false;
 					break;
 				default:
