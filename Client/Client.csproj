@@ -41,8 +41,13 @@
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>RunGun.Client.Program</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
+    <Compile Include="src\CLevelGeometry.cs" />
     <Compile Include="src\Game1.cs" />
+    <Compile Include="src\Networking\UdpUser.cs" />
     <Compile Include="src\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

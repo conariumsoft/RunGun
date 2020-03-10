@@ -1,20 +1,19 @@
 ﻿using System;
 
-namespace Client
+namespace RunGun.Client
 {
-    /// <summary>
-    /// The main class.
-    /// </summary>
     public static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
         [STAThread]
         static void Main()
         {
-            using (var game = new Game1())
+
+            Console.WriteLine("ASS");
+
+            using (var game = new Game1()) {
                 game.Run();
+            }
+
         }
     }
 }

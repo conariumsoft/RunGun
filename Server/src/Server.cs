@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using RunGun.Core;
 using RunGun.Core.Networking;
 using RunGun.Core.Physics;
 using RunGun.Server.Networking;
@@ -23,13 +24,14 @@ namespace RunGun.Server
 		double networkRelayClock = 0;
 
 		public Server(IPEndPoint endpoint) {
+
 			udpServer = new UdpListener(endpoint);
 			clients = new List<Client>();
 			networkMessageStack = new Stack<Received>();
 			geometry = new List<LevelGeometry>();
 
-			geometry.Add(new LevelGeometry(new Vector2(0, 10), new Vector2(20, 200)));
-			geometry.Add(new LevelGeometry(new Vector2(10, 250), new Vector2(300, 40)));
+			geometry.Add(new LevelGeometry(new Vector2(0, 10), new Vector2(20, 400), new Color(1, 0, 0)));
+			geometry.Add(new LevelGeometry(new Vector2(10, 420), new Vector2(800, 40), new Color(0, 1, 1)));
 		}
 
 		public bool IsClientConnected(IPEndPoint endpoint) {
@@ -94,10 +96,12 @@ namespace RunGun.Server
 
 			networkRelayClock += dt;
 
-			if (networkRelayClock > (1.0f / 30.0f)) {
+			if (networkRelayClock > (1.0f / 120.0f)) {
 				networkRelayClock = 0;
-				foreach (var client in clients)
-					SendToClient(client, String.Format("you {0} {1}", client.character.Position.X, client.character.Position.Y));
+				foreach (var client in clients) {
+					string oppe = String.Format("{0} {1} {2} {3} {4}", NetMsg.YOUR_POS, client.character.position.X, client.character.position.Y, client.character.velocity.X, client.character.velocity.Y);
+					SendToClient(client, oppe);
+				}
 			}
 
 			foreach (var client in clients)
@@ -116,55 +120,66 @@ namespace RunGun.Server
 			}
 		}
 
+		// TODO: refactor this into core
 		void Physics(float step) {
 			foreach (var client in clients) {
 
 				client.character.Physics(step);
-
+				client.character.isFalling = true;
 				foreach (var geom in geometry) {
 
-					bool result = CollisionSolver.CheckAABB(client.character.NextPosition, client.character.BoundingBox, geom.GetCenter(), geom.GetDimensions());
+					bool result = CollisionSolver.CheckAABB(client.character.nextPosition, client.character.boundingBox, geom.GetCenter(), geom.GetDimensions());
 
 					if (result) {
-						var separation = CollisionSolver.GetSeparationAABB(client.character.NextPosition, client.character.BoundingBox, geom.GetCenter(), geom.GetDimensions());
-						var normal = CollisionSolver.GetNormalAABB(separation, client.character.Velocity);
+						var separation = CollisionSolver.GetSeparationAABB(client.character.nextPosition, client.character.boundingBox, geom.GetCenter(), geom.GetDimensions());
+						var normal = CollisionSolver.GetNormalAABB(separation, client.character.velocity);
 
-						client.character.NextPosition += separation;
+						client.character.nextPosition += separation;
 
+						if (normal.Y == -1) {
+							client.character.isFalling = false;
+
+							if (!client.character.moveLeft && !client.character.moveRight) {
+								client.character.velocity = new Vector2(client.character.velocity.X * 0.9f, client.character.velocity.Y);
+							}
+						}
 					}
 				}
 			}
 		}
 
 		void HandleConnectAttempt(Received data, string[] words) {
+			Console.WriteLine("Client conn");
 			string nickname = words[1];
 			var client = new Client(data.Sender, nickname);
-			SendToAll(NetMsg.PEER_JOINED + client.nickname);
+			SendToAll(NetMsg.PEER_JOINED +" "+ client.nickname);
 			clients.Add(client);
+			SendToClient(client, NetMsg.CONNECT_ACK + "");
 
 			// sends map to client
 			foreach (LevelGeometry gm in geometry) {
-				SendToClient(client, String.Format("{0} {1} {2} {3} {4}", NetMsg.DL_LEVEL_GEOMETRY, gm.Position.X, gm.Position.Y, gm.size.X, gm.size.Y));
+				SendToClient(client, String.Format("{0} {1} {2} {3} {4} {5} {6} {7}", NetMsg.DL_LEVEL_GEOMETRY, gm.position.X, gm.position.Y, gm.size.X, gm.size.Y, gm.color.R, gm.color.G, gm.color.B));
 			}
 		}
 
 		void HandleDisconnect(Client client) {
 			clients.Remove(client);
-			SendToAll(NetMsg.PEER_LEFT + client.nickname);
+			SendToAll(NetMsg.PEER_LEFT +" "+ client.nickname);
 		}
 
 		void HandleChat() { }
 
 		void HandlePing(Client client) {
 			SendToClient(client, NetMsg.PONG + "");
+			//Console.WriteLine("pinged");
 			client.keepalive = 0;
 		}
 
 		void HandleNetworkMessage(Received received) {
 			string[] words = received.Message.Split(' ');
 
-
-			NetMsg command = (NetMsg)int.Parse(words[0]);
+			NetMsg command;
+			Enum.TryParse(words[0], true, out command);
 			// has to be specially handled anyway..
 			if (command == NetMsg.CONNECT) {
 				HandleConnectAttempt(received, words);
@@ -187,23 +202,32 @@ namespace RunGun.Server
 				case NetMsg.PING:
 					HandlePing(client);
 					break;
+				case NetMsg.PONG:
+					// TODO:
+					break;
 				case NetMsg.C_LEFT_DOWN:
-					client.character.MoveLeft = true;
+					//Console.WriteLine("LEFT DOWN");
+					client.character.moveLeft = true;
 					break;
 				case NetMsg.C_LEFT_UP:
-					client.character.MoveLeft = false;
+					//Console.WriteLine("LEFT UP");
+					client.character.moveLeft = false;
 					break;
 				case NetMsg.C_RIGHT_DOWN:
-					client.character.MoveRight = true;
+					//Console.WriteLine("RIGHT DOWN");
+					client.character.moveRight = true;
 					break;
 				case NetMsg.C_RIGHT_UP:
-					client.character.MoveRight = false;
+					//Console.WriteLine("RIGHT UP");
+					client.character.moveRight = false;
 					break;
 				case NetMsg.C_JUMP_DOWN:
-					client.character.MoveJump = true;
+					//Console.WriteLine("JUMP DOWN");
+					client.character.moveJump = true;
 					break;
 				case NetMsg.C_JUMP_UP:
-					client.character.MoveJump = false;
+					//Console.WriteLine("JUMP UP");
+					client.character.moveJump = false;
 					break;
 				default:
 					break;

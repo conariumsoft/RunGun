@@ -11,10 +11,11 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)src\Crypto.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Entity.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\LevelGeometry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Networking\NetMessage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Networking\UdpBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Physics\CollisionSolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Physics\PhysicsProperties.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Player.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)src\Stack.cs" />
   </ItemGroup>
 </Project>

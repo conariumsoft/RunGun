@@ -9,6 +9,7 @@ namespace RunGun.Core.Networking
 		PONG, //
 		DISCONNECT,
 		CONNECT,
+		CONNECT_ACK,
 		CHAT,
 		DL_LEVEL_GEOMETRY,
 		C_LEFT_DOWN,
@@ -21,5 +22,7 @@ namespace RunGun.Core.Networking
 		C_SHOOT_UP,
 		PEER_JOINED,
 		PEER_LEFT,
+		YOUR_POS,
+		ERR,
 	}
 }

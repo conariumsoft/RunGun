@@ -1,27 +1,32 @@
 ﻿using Microsoft.Xna.Framework;
 using RunGun.Core.Physics;
+using System;
 
 namespace RunGun.Core
 {
-	public class Player : PhysicalEntity, ILiving
+	public class Player : PhysicalEntity
 	{
-		float WalkAccelleration { get; set; }
-		float MaxWalkspeed { get; set; }
-		float JumpPower { get; set; }
-		
-		public bool MoveLeft { get; set; }
-		public bool MoveRight { get; set; }
-		public bool MoveJump { get; set; }
+		float walkAccelleration = 600;
+		float maxWalkspeed = 150;
+		float jumpPower = 1000;
 
-		public float Health { get; set; }
-		public float MaxHealth { get; set; }
-		public float Defense { get; set; }
-		public bool DestroyWhenDead { get; set; }
+		public bool moveLeft;
+		public bool moveRight;
+		public bool moveJump;
+
+		public float health = 100;
+		public float maxHealth = 100;
+		public float defense = 0;
+		public bool destroyWhenDead = false;
 
 		public Player() {
-			Position = new Vector2(64, 64);
-			NextPosition = new Vector2(64, 64);
-			BoundingBox = new Vector2(16, 16);
+			position = new Vector2(64, 64);
+			nextPosition = new Vector2(64, 64);
+			boundingBox = new Vector2(16, 16);
+		}
+
+		public Vector2 GetDrawPosition() {
+			return position - (boundingBox);
 		}
 
 		public override void Update(double delta) {
@@ -34,17 +39,18 @@ namespace RunGun.Core
 			float x_thrust = 0;
 			float y_thrust = 0;
 
-			if (MoveLeft && Velocity.X > -MaxWalkspeed) {
-				x_thrust = (-WalkAccelleration * step);
+			if (moveLeft && velocity.X > -maxWalkspeed) {
+				x_thrust = (-walkAccelleration * step);
 			}
-			if (MoveRight && Velocity.X < MaxWalkspeed) {
-				x_thrust += (WalkAccelleration * step);
+			if (moveRight && velocity.X < maxWalkspeed) {
+				x_thrust += (walkAccelleration * step);
 			}
-			if (MoveJump && IsFalling == false) {
-				y_thrust = -(JumpPower * Mass);
+			if (moveJump && isFalling == false) {
+				isFalling = true;
+				y_thrust = -(jumpPower * mass);
 			}
 
-			Velocity += new Vector2(x_thrust, y_thrust);
+			velocity += new Vector2(x_thrust, y_thrust);
 		}
 	}
 }
