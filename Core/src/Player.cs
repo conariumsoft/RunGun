@@ -38,10 +38,19 @@ namespace RunGun.Core
 			base.OnCollide(separation, normal);
 			if (normal.Y == -1) {
 				isFalling = false;
+				velocity.Y = 0;
 
 				if (!moveLeft && !moveRight) {
 					velocity = new Vector2(velocity.X * 0.9f, velocity.Y);
 				}
+			}
+
+			if (normal.Y == 1) {
+				velocity.Y = (-velocity.Y) * 0.3f;
+			}
+
+			if (normal.X != 0) {
+				velocity.X = 0;
 			}
 		}
 

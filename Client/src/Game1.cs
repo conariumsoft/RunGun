@@ -34,7 +34,7 @@ namespace RunGun.Client
         float keepAlive = 0;
         float ping;
         Matrix screenTransform;
-        static Player localPlayer;
+       // static Player localPlayer;
         static Player replicatedPlayer;
         Texture2D rectTexture;
         KeyListener listenW = new KeyListener(Keys.W, OnWDown, OnWUp);
@@ -88,7 +88,7 @@ namespace RunGun.Client
                 IsFullScreen = false,
             };
             Content.RootDirectory = "Content";
-            localPlayer = new Player();
+           // localPlayer = new Player();
             replicatedPlayer = new Player();
             otherPlayers = new List<Player>();
         }
@@ -140,7 +140,6 @@ namespace RunGun.Client
             SendToServer(NetMsg.DISCONNECT + "");
         }
 
-
         void ProcessPhysics(Player e, float step) {
 
             e.Physics(step);
@@ -163,7 +162,7 @@ namespace RunGun.Client
                 d = Keyboard.GetState().IsKeyDown(Keys.D)
             };
 
-            ProcessPhysics(localPlayer, step);
+            //ProcessPhysics(localPlayer, step);
             ProcessPhysics(replicatedPlayer, step);
 
 
@@ -211,7 +210,7 @@ namespace RunGun.Client
                     Console.WriteLine("iter: " + iterator);
 
                     replicatedPlayer.id = ourId;
-                    localPlayer.id = ourId;
+                   // localPlayer.id = ourId;
 
                     connected = true;
                     break;
@@ -231,7 +230,7 @@ namespace RunGun.Client
                     float velY = float.Parse(words[5]);
                     int stepIter = int.Parse(words[6]);
 
-                    if (id == localPlayer.id) {
+                    if (id == replicatedPlayer.id) {
                         replicatedPlayer.nextPosition = new Vector2(x, y);
                         replicatedPlayer.velocity = new Vector2(velX, velY);
 
@@ -262,14 +261,6 @@ namespace RunGun.Client
                             }
                         }
                     }
-
-                    if (Vector2.Distance(localPlayer.nextPosition, replicatedPlayer.nextPosition) > 25) {
-                        //Console.WriteLine("ZOG");
-
-                        // epic LERP
-                        //localPlayer.nextPosition = Vector2.Lerp(localPlayer.nextPosition, replicatedPlayer.nextPosition, 0.5f);
-                    }
-
                     break;
 
                 case NetMsg.PEER_JOINED:
@@ -321,7 +312,7 @@ namespace RunGun.Client
             listenW.Update();
             listenD.Update();
 
-            localPlayer.Update(dt);
+            //localPlayer.Update(dt);
             replicatedPlayer.Update(dt);
 
             foreach (var plr in otherPlayers) {
@@ -353,13 +344,16 @@ namespace RunGun.Client
 
             KeyboardState kbs = Keyboard.GetState();
 
-            localPlayer.moveJump = kbs.IsKeyDown(Keys.W);
-            localPlayer.moveLeft = kbs.IsKeyDown(Keys.A);
-            localPlayer.moveRight = kbs.IsKeyDown(Keys.D);
+            //localPlayer.moveJump = kbs.IsKeyDown(Keys.W);
+            //localPlayer.moveLeft = kbs.IsKeyDown(Keys.A);
+            //localPlayer.moveRight = kbs.IsKeyDown(Keys.D);
+
+            replicatedPlayer.moveJump = kbs.IsKeyDown(Keys.W);
+            replicatedPlayer.moveLeft = kbs.IsKeyDown(Keys.A);
+            replicatedPlayer.moveRight = kbs.IsKeyDown(Keys.D);
 
 
             base.Update(gameTime);
-            //Console.WriteLine("fps: " + (1 / dt));
         }
 
         protected override void Draw(GameTime gameTime)
@@ -376,7 +370,7 @@ namespace RunGun.Client
                 spriteBatch.Draw(rectTexture, plr.GetDrawPosition(), Color.Blue);
             }
 
-            spriteBatch.Draw(rectTexture, localPlayer.GetDrawPosition(), Color.White);
+            //spriteBatch.Draw(rectTexture, localPlayer.GetDrawPosition(), Color.White);
             spriteBatch.Draw(rectTexture, replicatedPlayer.GetDrawPosition(), Color.Green);
 
             double averageFPS = frameCounter.GetAverageFramerate();
