@@ -8,6 +8,19 @@ namespace RunGun.Core.Physics
 	public class CollisionSolver
 	{
 
+		public static void SolveEntityAgainstGeometry(PhysicalEntity e, LevelGeometry geom) {
+			bool result = CheckAABB(e.nextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
+
+			if (result) {
+				var separation = GetSeparationAABB(e.nextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
+				var normal = GetNormalAABB(separation, e.velocity);
+
+				e.nextPosition += separation;
+				e.OnCollide(separation, normal);
+
+			}
+		}
+
 		public static bool CheckAABB(Vector2 posA, Vector2 sizeA, Vector2 posB, Vector2 sizeB) {
 			float absDistanceX = Math.Abs(posA.X - posB.X);
 			float absDistanceY = Math.Abs(posA.Y - posB.Y);

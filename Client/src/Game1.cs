@@ -1,56 +1,25 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using RunGun.Client.Misc;
 using RunGun.Client.Networking;
 using RunGun.Core;
 using RunGun.Core.Networking;
 using RunGun.Core.Physics;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RunGun.Client
 {
-    //public void OnKeyPress();
-    public delegate void OnKeyRelease();
 
-    public class KeyState
+    struct InputState
     {
-        bool down;
-        bool debounce;
-        
-        Keys key;
-
-        Func<int> kp;
-        Func<int> kr;
-
-
-        public KeyState(Keys keyToListen, Func<int> onPress, Func<int> onRelease) {
-            key = keyToListen;
-            kp = onPress;
-            kr = onRelease;
-
-        }
-
-        public void Update() {
-            if (Keyboard.GetState().IsKeyDown(key)) {
-                down = true;
-
-                if (debounce == false) {
-                    debounce = true;
-                    kp();
-                }
-
-            } else {
-                down = false;
-                if (debounce == true) {
-                    debounce = false;
-                    kr();
-                }
-            }
-        }
+        public bool w;
+        public bool a;
+        public bool d;
     }
-
 
     public class Game1 : Game
     {
@@ -68,24 +37,36 @@ namespace RunGun.Client
         static Player localPlayer;
         static Player replicatedPlayer;
         Texture2D rectTexture;
-        KeyState listenW = new KeyState(Keys.W, OnWDown, OnWUp);
-        KeyState listenA = new KeyState(Keys.A, OnADown, OnAUp);
-        KeyState listenD = new KeyState(Keys.D, OnDDown, OnDUp);
+        KeyListener listenW = new KeyListener(Keys.W, OnWDown, OnWUp);
+        KeyListener listenA = new KeyListener(Keys.A, OnADown, OnAUp);
+        KeyListener listenD = new KeyListener(Keys.D, OnDDown, OnDUp);
         bool connected = false;
 
-        public static int OnWDown() {
+        SpriteFont font;
+        Vector2 textpos = new Vector2(4, 4);
+        List<Player> otherPlayers;
+
+
+        int iterator = 0;
+        Vector2[] positionHistory = new Vector2[100000];
+        Vector2[] velocityHistory = new Vector2[100000];
+        InputState[] inputHistory = new InputState[100000];
+
+        FrameCounter frameCounter;
+
+        static int OnWDown() {
             SendToServer(NetMsg.C_JUMP_DOWN+"");
             return 0;
         }
-        public static int OnWUp() {
+        static int OnWUp() {
             SendToServer(NetMsg.C_JUMP_UP + "");
             return 0;
         }
-        public static int OnADown() {
+        static int OnADown() {
             SendToServer(NetMsg.C_LEFT_DOWN + "");
             return 0;
         }
-        public static int OnAUp() {
+        static int OnAUp() {
             SendToServer(NetMsg.C_LEFT_UP + "");
             return 0;
         }
@@ -107,6 +88,9 @@ namespace RunGun.Client
                 IsFullScreen = false,
             };
             Content.RootDirectory = "Content";
+            localPlayer = new Player();
+            replicatedPlayer = new Player();
+            otherPlayers = new List<Player>();
         }
 
         protected override void Initialize() {
@@ -114,8 +98,7 @@ namespace RunGun.Client
 
             IsFixedTimeStep = false;
 
-            localPlayer = new Player();
-            replicatedPlayer = new Player();
+            frameCounter = new FrameCounter();
 
             Color[] data = new Color[32*32];
 
@@ -135,7 +118,7 @@ namespace RunGun.Client
                 while (true) {
                     try {
                         var received = await udpClient.Receive();
-
+                        //Thread.Sleep(); // false lag
                         lock (networkMessageStack) {
                             networkMessageStack.Push(received);
                         }
@@ -148,9 +131,14 @@ namespace RunGun.Client
 
         protected override void LoadContent() {
             spriteBatch = new SpriteBatch(GraphicsDevice);
+
+
+            font = this.Content.Load<SpriteFont>("Font");
         }
 
-        protected override void UnloadContent() {}
+        protected override void UnloadContent() {
+            SendToServer(NetMsg.DISCONNECT + "");
+        }
 
 
         void ProcessPhysics(Player e, float step) {
@@ -159,28 +147,29 @@ namespace RunGun.Client
 
             e.isFalling = true;
             foreach (var geom in map) {
-                bool result = CollisionSolver.CheckAABB(e.nextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
-
-                if (result) {
-                    var separation = CollisionSolver.GetSeparationAABB(e.nextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
-                    var normal = CollisionSolver.GetNormalAABB(separation, e.velocity);
-
-                    e.nextPosition += separation;
-                    if (normal.Y == -1) {
-                        e.isFalling = false;
-
-                        if (!e.moveLeft && !e.moveRight) {
-                            e.velocity = new Vector2(e.velocity.X * 0.9f, e.velocity.Y);
-                        }
-                    }
-                }
+                CollisionSolver.SolveEntityAgainstGeometry(e, geom);
             }
         }
 
         // TODO: refactor this into core
         void Physics(float step) {
+            iterator++;
+
+            positionHistory[iterator] = replicatedPlayer.nextPosition;
+            velocityHistory[iterator] = replicatedPlayer.velocity;
+            inputHistory[iterator] = new InputState() {
+                w = Keyboard.GetState().IsKeyDown(Keys.W),
+                a = Keyboard.GetState().IsKeyDown(Keys.A),
+                d = Keyboard.GetState().IsKeyDown(Keys.D)
+            };
+
             ProcessPhysics(localPlayer, step);
             ProcessPhysics(replicatedPlayer, step);
+
+
+            foreach(var plr in otherPlayers) {
+                ProcessPhysics(plr, step);
+            }
         }
 
         public static void SendToServer(string message) {
@@ -214,6 +203,16 @@ namespace RunGun.Client
                     keepAlive = 0;
                     break;
                 case NetMsg.CONNECT_ACK:
+
+                    int ourId = int.Parse(words[1]);
+                    int serverIter = int.Parse(words[2]);
+
+                    iterator = serverIter;
+                    Console.WriteLine("iter: " + iterator);
+
+                    replicatedPlayer.id = ourId;
+                    localPlayer.id = ourId;
+
                     connected = true;
                     break;
                 case NetMsg.PING:
@@ -224,24 +223,75 @@ namespace RunGun.Client
                     map.Add(DecodeLevelGeometry(words));
                     break;
 
-                case NetMsg.YOUR_POS:
-                    float x = float.Parse(words[1]);
-                    float y = float.Parse(words[2]);
-                    float velX = float.Parse(words[3]);
-                    float velY = float.Parse(words[4]);
+                case NetMsg.PLAYER_POS:
+                    int id = int.Parse(words[1]);
+                    float x = float.Parse(words[2]);
+                    float y = float.Parse(words[3]);
+                    float velX = float.Parse(words[4]);
+                    float velY = float.Parse(words[5]);
+                    int stepIter = int.Parse(words[6]);
 
-                    replicatedPlayer.nextPosition = new Vector2(x, y);
-                    replicatedPlayer.velocity = new Vector2(velX, velY);
+                    if (id == localPlayer.id) {
+                        replicatedPlayer.nextPosition = new Vector2(x, y);
+                        replicatedPlayer.velocity = new Vector2(velX, velY);
+
+                        int diff = iterator - stepIter;
+                        Console.WriteLine("cock: " + iterator + " " + stepIter + " " + diff);
+
+                        int poo = iterator - diff;
+
+                        positionHistory[poo] = replicatedPlayer.nextPosition;
+                        velocityHistory[poo] = replicatedPlayer.velocity;
+
+                        for (int i = poo; i < iterator; i++) {
+
+                            replicatedPlayer.moveLeft = inputHistory[i].a;
+                            replicatedPlayer.moveRight = inputHistory[i].d;
+                            replicatedPlayer.moveJump = inputHistory[i].w;
+
+                            ProcessPhysics(replicatedPlayer, PhysicsProperties.PHYSICS_TIMESTEP);
+                            positionHistory[i] = replicatedPlayer.nextPosition;
+                            velocityHistory[i] = replicatedPlayer.velocity;
+                        }
+
+                    } else {
+                        foreach (var plr in otherPlayers) {
+                            if (id == plr.id) {
+                                plr.nextPosition = new Vector2(x, y);
+                                plr.velocity = new Vector2(velX, velY);
+                            }
+                        }
+                    }
 
                     if (Vector2.Distance(localPlayer.nextPosition, replicatedPlayer.nextPosition) > 25) {
                         //Console.WriteLine("ZOG");
 
                         // epic LERP
-                        localPlayer.nextPosition = Vector2.Lerp(localPlayer.nextPosition, replicatedPlayer.nextPosition, 0.5f);
+                        //localPlayer.nextPosition = Vector2.Lerp(localPlayer.nextPosition, replicatedPlayer.nextPosition, 0.5f);
                     }
 
                     break;
 
+                case NetMsg.PEER_JOINED:
+                    int idOf = int.Parse(words[1]);
+
+                    var newPlayer = new Player();
+                    newPlayer.id = idOf;
+
+                    otherPlayers.Add(newPlayer);
+                    break;
+                case NetMsg.PEER_LEFT:
+                    // TODO: get rid of player?
+
+                    int idT = int.Parse(words[1]);
+
+                    foreach (var plr in otherPlayers.ToArray()) {
+                        if (plr.id == idT) {
+                            otherPlayers.Remove(plr);
+                        }
+                    }
+
+                    break;
                 default:
                     Console.WriteLine("Unexpected Command: [" + words[0] + "] full message: " + received.Message);
                     break;
@@ -259,10 +309,9 @@ namespace RunGun.Client
 
         protected override void Update(GameTime gameTime)
         {
+            frameCounter.Update(gameTime);
 
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            Window.Title = String.Format("RunGunClient {0}fps {1}ms", (1/dt), ping*1000);
 
             HandleNetworkStack();
             if (!connected)
@@ -274,6 +323,10 @@ namespace RunGun.Client
 
             localPlayer.Update(dt);
             replicatedPlayer.Update(dt);
+
+            foreach (var plr in otherPlayers) {
+                plr.Update(dt);
+            }
 
             physicsClock += dt;
             while (physicsClock > PhysicsProperties.PHYSICS_TIMESTEP) {
@@ -319,8 +372,19 @@ namespace RunGun.Client
                 geom.Draw(spriteBatch);
             }
 
+            foreach (var plr in otherPlayers) {
+                spriteBatch.Draw(rectTexture, plr.GetDrawPosition(), Color.Blue);
+            }
+
             spriteBatch.Draw(rectTexture, localPlayer.GetDrawPosition(), Color.White);
             spriteBatch.Draw(rectTexture, replicatedPlayer.GetDrawPosition(), Color.Green);
+
+            double averageFPS = frameCounter.GetAverageFramerate();
+
+            string debugdata = "fps: " + Math.Floor(averageFPS) + " ping: " + Math.Floor(ping*1000) + "ms\n"+
+                "peers: " + otherPlayers.Count + " ";
+
+            spriteBatch.DrawString(font, debugdata, textpos, Color.White);
 
             //-------------------------------------------------------------------------------------------------------------
             spriteBatch.End();

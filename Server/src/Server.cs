@@ -12,8 +12,15 @@ using System.Threading.Tasks;
 
 namespace RunGun.Server
 {
+	/* RunGun Server ToDo List
+	 * load map from file.
+	 * 
+	 * 
+	 */
 	class Server
 	{
+
+		public static int idAssignment;
 
 		UdpListener udpServer;
 		List<Client> clients;
@@ -22,6 +29,8 @@ namespace RunGun.Server
 		bool killed = false;
 		double delta = 0;
 		double networkRelayClock = 0;
+
+		int iterator = 0;
 
 		public Server(IPEndPoint endpoint) {
 
@@ -99,14 +108,13 @@ namespace RunGun.Server
 			if (networkRelayClock > (1.0f / 120.0f)) {
 				networkRelayClock = 0;
 				foreach (var client in clients) {
-					string oppe = String.Format("{0} {1} {2} {3} {4}", NetMsg.YOUR_POS, client.character.position.X, client.character.position.Y, client.character.velocity.X, client.character.velocity.Y);
-					SendToClient(client, oppe);
+					string oppe = String.Format("{0} {1} {2} {3} {4} {5} {6}", NetMsg.PLAYER_POS, client.character.id, client.character.nextPosition.X, client.character.nextPosition.Y, client.character.velocity.X, client.character.velocity.Y, iterator);
+					SendToAll(oppe);
 				}
 			}
 
 			foreach (var client in clients)
 				client.character.Update(dt);
-
 
 			// gay hack?
 			foreach (var client in clients.ToArray()) {
@@ -115,36 +123,25 @@ namespace RunGun.Server
 				if (client.keepalive > 10) {
 					// TODO: client disconnect
 					clients.Remove(client);
-					SendToAll(NetMsg.PEER_LEFT + client.nickname);
+					SendToAll(NetMsg.PEER_LEFT +" "+ client.character.id);
 				}
 			}
 		}
 
-		// TODO: refactor this into core
+		void ProcessPhysics(Player e, float step) {
+			e.Physics(step);
+
+			e.isFalling = true;
+			foreach (var geom in geometry) {
+				CollisionSolver.SolveEntityAgainstGeometry(e, geom);
+			}
+		}
+
 		void Physics(float step) {
+			iterator++;
+
 			foreach (var client in clients) {
-
-				client.character.Physics(step);
-				client.character.isFalling = true;
-				foreach (var geom in geometry) {
-
-					bool result = CollisionSolver.CheckAABB(client.character.nextPosition, client.character.boundingBox, geom.GetCenter(), geom.GetDimensions());
-
-					if (result) {
-						var separation = CollisionSolver.GetSeparationAABB(client.character.nextPosition, client.character.boundingBox, geom.GetCenter(), geom.GetDimensions());
-						var normal = CollisionSolver.GetNormalAABB(separation, client.character.velocity);
-
-						client.character.nextPosition += separation;
-
-						if (normal.Y == -1) {
-							client.character.isFalling = false;
-
-							if (!client.character.moveLeft && !client.character.moveRight) {
-								client.character.velocity = new Vector2(client.character.velocity.X * 0.9f, client.character.velocity.Y);
-							}
-						}
-					}
-				}
+				ProcessPhysics(client.character, step);
 			}
 		}
 
@@ -152,9 +149,18 @@ namespace RunGun.Server
 			Console.WriteLine("Client conn");
 			string nickname = words[1];
 			var client = new Client(data.Sender, nickname);
-			SendToAll(NetMsg.PEER_JOINED +" "+ client.nickname);
+			client.character.id = idAssignment;
+			idAssignment++;
+			SendToAll(NetMsg.PEER_JOINED +" "+ client.character.id);
+
+			// lol wtf
+			//foreach (var cli in clients) {
+				//SendToClient(client, NetMsg.PEER_JOINED+" "+cli.character.id);
+			//}
+
 			clients.Add(client);
-			SendToClient(client, NetMsg.CONNECT_ACK + "");
+			SendToClient(client, NetMsg.CONNECT_ACK + " " + client.character.id + " "+iterator);
+
 
 			// sends map to client
 			foreach (LevelGeometry gm in geometry) {
@@ -164,7 +170,7 @@ namespace RunGun.Server
 
 		void HandleDisconnect(Client client) {
 			clients.Remove(client);
-			SendToAll(NetMsg.PEER_LEFT +" "+ client.nickname);
+			SendToAll(NetMsg.PEER_LEFT +" "+ client.character.id);
 		}
 
 		void HandleChat() { }

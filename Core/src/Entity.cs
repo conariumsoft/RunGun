@@ -42,5 +42,10 @@ namespace RunGun.Core
 			nextPosition += (velocity * step);
 			position = nextPosition;
 		}
+
+
+		public virtual void OnCollide(Vector2 separation, Vector2 normal) {
+
+		}
 	}
 }

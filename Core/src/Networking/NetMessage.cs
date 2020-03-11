@@ -22,7 +22,8 @@ namespace RunGun.Core.Networking
 		C_SHOOT_UP,
 		PEER_JOINED,
 		PEER_LEFT,
-		YOUR_POS,
+		PLAYER_POS,
 		ERR,
+		EXISTING_PEER,
 	}
 }
