@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Core.src.Physics
+namespace RunGun.Core.Physics
 {
 	class CommonPhysics
 	{

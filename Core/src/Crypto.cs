@@ -5,9 +5,8 @@ using System.Security.Cryptography;
 
 namespace RunGun.Core
 {
-	class Crypto
+	public static class Crypto
 	{
-
 		static HashAlgorithm sha256 = SHA256.Create();
 
 		public static byte[] GetHash(string input) {
@@ -23,6 +22,5 @@ namespace RunGun.Core
 
 			return sb.ToString();
 		}
-
 	}
 }

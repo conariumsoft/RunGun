@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using RunGun.Client.Misc;
 using RunGun.Client.Networking;
 using RunGun.Core;
+using RunGun.Core.Bullshit;
 using RunGun.Core.Networking;
 using RunGun.Core.Physics;
 using System;
@@ -55,28 +56,32 @@ namespace RunGun.Client
         FrameCounter frameCounter;
 
         static int OnWDown() {
-            SendToServer(NetMsg.C_JUMP_DOWN+"");
+            SendToServer(NetMsg.PLR_JUMP_DOWN+"");
             return 0;
         }
         static int OnWUp() {
-            SendToServer(NetMsg.C_JUMP_UP + "");
+            SendToServer(NetMsg.PLR_JUMP_UP + "");
             return 0;
         }
         static int OnADown() {
-            SendToServer(NetMsg.C_LEFT_DOWN + "");
+            SendToServer(NetMsg.PLR_LEFT_DOWN + "");
             return 0;
         }
         static int OnAUp() {
-            SendToServer(NetMsg.C_LEFT_UP + "");
+            SendToServer(NetMsg.PLR_LEFT_UP + "");
             return 0;
         }
         static int OnDDown() {
-            SendToServer(NetMsg.C_RIGHT_DOWN + "");
+            SendToServer(NetMsg.PLR_RIGHT_DOWN + "");
             return 0;
         }
         static int OnDUp() {
-            SendToServer(NetMsg.C_RIGHT_UP + "");
+            SendToServer(NetMsg.PLR_RIGHT_UP + "");
             return 0;
+        }
+
+        void AssJack(Player sender, string[] args) {
+
         }
 
         public Game1()
@@ -89,8 +94,10 @@ namespace RunGun.Client
             };
             Content.RootDirectory = "Content";
            // localPlayer = new Player();
-            replicatedPlayer = new Player();
+            replicatedPlayer = new Player(-1);
             otherPlayers = new List<Player>();
+
+            //netMsg.Connect(NetMsg.DL_LEVEL_GEOMETRY, AssJack);
         }
 
         protected override void Initialize() {
@@ -187,12 +194,13 @@ namespace RunGun.Client
             return new CLevelGeometry(GraphicsDevice, new Vector2(x, y), new Vector2(w, h), new Color(r, g, b));
         }
 
-
         void HandleNetworkMessage(Received received) {
             string[] words = received.Message.Split(' ');
-
+            
             NetMsg command;
             Enum.TryParse(words[0], true, out command);
+
+            //NetMessageListener.Call(replicatedPlayer, command, words);
 
             switch (command) {
                 case NetMsg.PONG:
@@ -266,8 +274,7 @@ namespace RunGun.Client
                 case NetMsg.PEER_JOINED:
                     int idOf = int.Parse(words[1]);
 
-                    var newPlayer = new Player();
-                    newPlayer.id = idOf;
+                    var newPlayer = new Player(idOf);
 
                     otherPlayers.Add(newPlayer);
                     break;

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using RunGun.Core;
+using RunGun.Core.Bullshit;
 using RunGun.Core.Networking;
 using RunGun.Core.Physics;
 using RunGun.Server.Networking;
@@ -14,91 +15,165 @@ namespace RunGun.Server
 {
 	/* RunGun Server ToDo List
 	 * load map from file.
+	 * bullet wall penetration algorithm: f(x) = x * (1 / (t * d))
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
 	 * 
 	 * 
 	 */
+
 	class Server
 	{
-
+		bool isRunning = true;
+		ServerLayer serverLayer;
 		public static int idAssignment;
-
-		UdpListener udpServer;
-		List<Client> clients;
-		Stack<Received> networkMessageStack;
+		static List<Client> clients;
 		List<LevelGeometry> geometry;
-		bool killed = false;
+		static List<Player> players;
 		double delta = 0;
 		double networkRelayClock = 0;
-
 		int iterator = 0;
+
+		void OnConnect(Received received, string[] args) {
+			// create client
+			string nickname = args[1];
+
+			Client client = new Client(received.Sender, nickname, idAssignment);
+			Player player = new Player(idAssignment);
+
+
+			idAssignment++;
+
+			// notify join (before adding to clients)
+			SendToAll(NetMsg.PEER_JOINED + " " + client.id);
+			clients.Add(client);
+			players.Add(player);
+			SendToClient(client, NetMsg.CONNECT_ACK + " " + client.id + " " + iterator);
+
+			// sends map to client
+			foreach (LevelGeometry gm in geometry) {
+				SendToClient(client, String.Format("{0} {1} {2} {3} {4} {5} {6} {7}", 
+					NetMsg.DL_LEVEL_GEOMETRY, 
+					gm.position.X, 
+					gm.position.Y, 
+					gm.size.X, 
+					gm.size.Y, 
+					gm.color.R,
+					gm.color.G, 
+					gm.color.B
+				));
+			}
+		}
+
+		void OnDisconnect(Player p, string[] args) {
+			var client = GetClient(p);
+			clients.Remove(client);
+			SendToAll(NetMsg.PEER_LEFT + " " + client.id);
+		}
+
+
+		void OnPing(Player p, string[] args) {
+			var client = GetClient(p);
+			SendToClient(client, NetMsg.PONG + "");
+			client.keepalive = 0;
+		}
+
+		void OnPong(Player p, string[] args) {
+			 
+		}
+
+		void OnPlayerLeftDown  (Player p, string[] _) { p.moveLeft = true;   }
+		void OnPlayerLeftUp    (Player p, string[] _) { p.moveLeft = false;  }
+		void OnPlayerRightDown (Player p, string[] _) { p.moveRight = true;  }
+		void OnPlayerRightUp   (Player p, string[] _) { p.moveRight = false; }
+		void OnPlayerJumpDown  (Player p, string[] _) { p.moveJump = true;   }
+		void OnPlayerJumpUp    (Player p, string[] _) { p.moveJump = false;  }
 
 		public Server(IPEndPoint endpoint) {
 
-			udpServer = new UdpListener(endpoint);
-			clients = new List<Client>();
-			networkMessageStack = new Stack<Received>();
-			geometry = new List<LevelGeometry>();
+			serverLayer = new ServerLayer(endpoint);
 
-			geometry.Add(new LevelGeometry(new Vector2(0, 10), new Vector2(20, 400), new Color(1, 0, 0)));
-			geometry.Add(new LevelGeometry(new Vector2(10, 420), new Vector2(800, 40), new Color(0, 1, 1)));
+			serverLayer.OnUnconnectedPacket.Connect(NetMsg.CONNECT, OnConnect);
+
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PING, OnPing);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PONG, OnPong);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.DISCONNECT, OnDisconnect);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_LEFT_DOWN,  OnPlayerLeftDown);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_LEFT_UP,    OnPlayerLeftUp);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_RIGHT_DOWN, OnPlayerRightDown);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_RIGHT_UP,   OnPlayerRightUp);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_JUMP_DOWN,  OnPlayerJumpDown);
+			serverLayer.OnPlayerPacket.Connect(NetMsg.PLR_JUMP_UP,    OnPlayerJumpUp);
+			
+			clients = new List<Client>();
+			players = new List<Player>();
+
+			geometry = new List<LevelGeometry>() {
+				new LevelGeometry(new Vector2(0, 10), new Vector2(20, 400), new Color(1, 0, 0)),
+				new LevelGeometry(new Vector2(10, 420), new Vector2(800, 40), new Color(0, 1, 1))
+			};
 		}
 
-		public bool IsClientConnected(IPEndPoint endpoint) {
+		public static bool IsClientConnected(IPEndPoint endpoint) {
 			foreach (var c in clients) {
-
-				if (c.endpoint.Equals(endpoint)) {
+				if (c.endpoint.Equals(endpoint))
 					return true;
-				}
 			}
 			return false;
 		}
-
-		public Client GetClient(IPEndPoint endpoint) {
+		public static Client GetClient(IPEndPoint endpoint) {
 			foreach (var c in clients) {
-
-				if (c.endpoint.Equals(endpoint)) {
+				if (c.endpoint.Equals(endpoint))
 					return c;
-				}
 			}
 			return null;
 		}
-
-		public Client GetClient(string nickname) {
+		public static Client GetClient(string nickname) {
 			foreach (var c in clients) {
-
-				if (c.nickname == nickname) {
+				if (c.nickname == nickname)
 					return c;
-				}
 			}
 			return null;
 		}
-
-		public Client GetClient(int id) {
+		public static Client GetClient(int id) {
 			foreach (var c in clients) {
-
-				if (c.id == id) {
+				if (c.id == id)
 					return c;
-				}
 			}
 			return null;
 		}
-
+		public static Client GetClient(Player p) {
+			foreach (var c in clients) {
+				if (c.id == p.id)
+					return c;
+			}
+			return null;
+		}
+		public static Player GetPlayer(Client c) {
+			foreach(var plr in players) {
+				if (plr.id == c.id) {
+					return plr;
+				}
+			}
+			return null; // shouldn't ever _actually_ return null. since if client exists, so does player.
+		}
 		public void SendToAll(string message) {
 			foreach (var client in clients) {
-				udpServer.Reply(message, client.endpoint);
+				serverLayer.Send(message, client.endpoint);
 			}
 		}
-
 		public void SendToAllExcept(Client exception, string message) {
 			foreach (var client in clients) {
 				if (client != exception) {
-					udpServer.Reply(message, client.endpoint);
+					serverLayer.Send(message, client.endpoint);
 				}
 			}
 		}
-
 		public void SendToClient(Client client, string message) {
-			udpServer.Reply(message, client.endpoint);
+			serverLayer.Send(message, client.endpoint);
 		}
 
 		void Update(double dt) {
@@ -107,14 +182,21 @@ namespace RunGun.Server
 
 			if (networkRelayClock > (1.0f / 120.0f)) {
 				networkRelayClock = 0;
-				foreach (var client in clients) {
-					string oppe = String.Format("{0} {1} {2} {3} {4} {5} {6}", NetMsg.PLAYER_POS, client.character.id, client.character.nextPosition.X, client.character.nextPosition.Y, client.character.velocity.X, client.character.velocity.Y, iterator);
+
+				foreach (var plr in players) {
+					// TODO: see how many packets we can combine...
+					string oppe = String.Format("{0} {1} {2} {3} {4} {5} {6}",
+						NetMsg.PLAYER_POS, plr.id,
+						plr.nextPosition.X, plr.nextPosition.Y, 
+						plr.velocity.X, plr.velocity.Y, iterator
+					);
 					SendToAll(oppe);
 				}
+
 			}
 
-			foreach (var client in clients)
-				client.character.Update(dt);
+			foreach (var player in players)
+				player.Update(dt);
 
 			// gay hack?
 			foreach (var client in clients.ToArray()) {
@@ -122,8 +204,10 @@ namespace RunGun.Server
 				client.keepalive = client.keepalive + dt;
 				if (client.keepalive > 10) {
 					// TODO: client disconnect
+					players.Remove(GetPlayer(client));
 					clients.Remove(client);
-					SendToAll(NetMsg.PEER_LEFT +" "+ client.character.id);
+
+					SendToAll(NetMsg.PEER_LEFT +" "+ client.id);
 				}
 			}
 		}
@@ -140,137 +224,21 @@ namespace RunGun.Server
 		void Physics(float step) {
 			iterator++;
 
-			foreach (var client in clients) {
-				ProcessPhysics(client.character, step);
+			foreach (var player in players) {
+				ProcessPhysics(player, step);
 			}
-		}
-
-		void HandleConnectAttempt(Received data, string[] words) {
-			Console.WriteLine("Client conn");
-			string nickname = words[1];
-			var client = new Client(data.Sender, nickname);
-			client.character.id = idAssignment;
-			idAssignment++;
-			SendToAll(NetMsg.PEER_JOINED +" "+ client.character.id);
-
-			// lol wtf
-			//foreach (var cli in clients) {
-				//SendToClient(client, NetMsg.PEER_JOINED+" "+cli.character.id);
-			//}
-
-			clients.Add(client);
-			SendToClient(client, NetMsg.CONNECT_ACK + " " + client.character.id + " "+iterator);
-
-
-			// sends map to client
-			foreach (LevelGeometry gm in geometry) {
-				SendToClient(client, String.Format("{0} {1} {2} {3} {4} {5} {6} {7}", NetMsg.DL_LEVEL_GEOMETRY, gm.position.X, gm.position.Y, gm.size.X, gm.size.Y, gm.color.R, gm.color.G, gm.color.B));
-			}
-		}
-
-		void HandleDisconnect(Client client) {
-			clients.Remove(client);
-			SendToAll(NetMsg.PEER_LEFT +" "+ client.character.id);
-		}
-
-		void HandleChat() { }
-
-		void HandlePing(Client client) {
-			SendToClient(client, NetMsg.PONG + "");
-			//Console.WriteLine("pinged");
-			client.keepalive = 0;
-		}
-
-		void HandleNetworkMessage(Received received) {
-			string[] words = received.Message.Split(' ');
-
-			NetMsg command;
-			Enum.TryParse(words[0], true, out command);
-			// has to be specially handled anyway..
-			if (command == NetMsg.CONNECT) {
-				HandleConnectAttempt(received, words);
-				return;
-			}
-		
-			// no other messages should be accepted from not-connected
-			if (!IsClientConnected(received.Sender))
-				return;
-
-			var client = GetClient(received.Sender);
-
-			switch (command) {
-				case NetMsg.DISCONNECT:
-					HandleDisconnect(client);
-					break;
-				case NetMsg.CHAT:
-					HandleChat();
-					break;
-				case NetMsg.PING:
-					HandlePing(client);
-					break;
-				case NetMsg.PONG:
-					// TODO:
-					break;
-				case NetMsg.C_LEFT_DOWN:
-					//Console.WriteLine("LEFT DOWN");
-					client.character.moveLeft = true;
-					break;
-				case NetMsg.C_LEFT_UP:
-					//Console.WriteLine("LEFT UP");
-					client.character.moveLeft = false;
-					break;
-				case NetMsg.C_RIGHT_DOWN:
-					//Console.WriteLine("RIGHT DOWN");
-					client.character.moveRight = true;
-					break;
-				case NetMsg.C_RIGHT_UP:
-					//Console.WriteLine("RIGHT UP");
-					client.character.moveRight = false;
-					break;
-				case NetMsg.C_JUMP_DOWN:
-					//Console.WriteLine("JUMP DOWN");
-					client.character.moveJump = true;
-					break;
-				case NetMsg.C_JUMP_UP:
-					//Console.WriteLine("JUMP UP");
-					client.character.moveJump = false;
-					break;
-				default:
-					break;
-			}
-		}
-
-		void HandleNetworkStack() {
-			lock (networkMessageStack) {
-				for (int i = 0; i < networkMessageStack.Count; i++) {
-					Received received = networkMessageStack.Pop();
-					
-					HandleNetworkMessage(received);
-				}
-			}
-		}
-
-		public void StartNetworkThread() {
-			Task.Factory.StartNew(async () => {
-				while (true) {
-					Received received = await udpServer.Receive();
-					lock (networkMessageStack) {
-						networkMessageStack.Push(received);
-					}
-				}
-			});
 		}
 
 		public int Run() {
-			StartNetworkThread();
+			serverLayer.StartNetworkThread();
 
 			Stopwatch stopwatch = new Stopwatch();
 			float physicsClock = 0;
 
-			while (!killed) {
+			while (isRunning) {
 				stopwatch = Stopwatch.StartNew();
 
-				HandleNetworkStack();
+				serverLayer.ReadPacketQueue();
 
 				physicsClock += (float)delta;
 				while (physicsClock > PhysicsProperties.PHYSICS_TIMESTEP) {

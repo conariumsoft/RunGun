@@ -20,12 +20,12 @@ namespace RunGun.Core
 
 		public int id;
 
-		public Player() {
+		public Player(int cocksucker) {
 			position = new Vector2(64, 64);
 			nextPosition = new Vector2(64, 64);
 			boundingBox = new Vector2(16, 16);
 
-			id = -1;
+			id = cocksucker;
 		}
 
 		public Vector2 GetDrawPosition() {
