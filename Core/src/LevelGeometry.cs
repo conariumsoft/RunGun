@@ -30,6 +30,10 @@ namespace RunGun.Core
 			color = col;
 		}
 
+		public string Serialize() {
+			return String.Format("{0} {1} {2} {3} {4} {5} {6}", position.X, position.Y, size.X, size.Y, color.R, color.G, color.B);
+		}
+
 		public Vector2 GetCenter() {
 			return position + (size / 2);
 		}

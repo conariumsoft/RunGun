@@ -18,6 +18,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="default-serverconf.lua" />
+    <None Remove="src\Lua\test.lua" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="default-serverconf.lua" />
+    <EmbeddedResource Include="src\Lua\InternalScripts\test.lua">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NLua" Version="1.4.29" />
   </ItemGroup>
 

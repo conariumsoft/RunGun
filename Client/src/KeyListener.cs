@@ -1,9 +1,6 @@
 ﻿using Microsoft.Xna.Framework.Input;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace RunGun.Client.Misc
 {
@@ -11,10 +8,10 @@ namespace RunGun.Client.Misc
     {
         bool debounce;
         Keys key;
-        Func<int> kp;
-        Func<int> kr;
+        Action kp;
+        Action kr;
 
-        public KeyListener(Keys keyToListen, Func<int> onPress, Func<int> onRelease) {
+        public KeyListener(Keys keyToListen, Action onPress, Action onRelease) {
             key = keyToListen;
             kp = onPress;
             kr = onRelease;

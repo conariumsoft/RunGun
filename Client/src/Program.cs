@@ -10,7 +10,7 @@ namespace RunGun.Client
 
             Console.WriteLine("ASS");
 
-            using (var game = new Game1()) {
+            using (var game = new ClientMain()) {
                 game.Run();
             }
 

@@ -16,9 +16,9 @@ namespace RunGun.Server
 	{
 		public static List<string> ChatHistory = new List<string>();
 
-		public static void HandleReceivedMessage(Client sender, string message) {
+		//public static void HandleReceivedMessage(Client sender, string message) {
 
-		}
+		//}
 
 		public static void MessageAll(string outgoing) {
 

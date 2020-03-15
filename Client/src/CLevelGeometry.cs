@@ -46,6 +46,28 @@ namespace RunGun.Client
 
 		}
 
+		public static CLevelGeometry Deserialize(GraphicsDevice gd, string[] data) {
+			int x = int.Parse(data[0]);
+			int y = int.Parse(data[1]);
+			int w = int.Parse(data[2]);
+			int h = int.Parse(data[3]);
+			int r = int.Parse(data[4]);
+			int g = int.Parse(data[5]);
+			int b = int.Parse(data[6]);
+
+			return new CLevelGeometry(gd,
+				new Vector2(x, y),
+				new Vector2(w, h),
+				new Color(r, g, b)
+			);
+		}
+
+		public static CLevelGeometry Deserialize(GraphicsDevice gd, string str) {
+			string[] data = str.Split(' ');
+
+			return Deserialize(gd, data);
+		}
+
 		public void Draw(SpriteBatch spriteBatch) {
 			sprite.Draw(spriteBatch, position);
 		}

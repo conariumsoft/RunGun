@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Security.Cryptography;
 
-namespace RunGun.Core
+namespace RunGun.Core.Utility
 {
-	public static class Crypto
+	public static class Cryptography
 	{
 		static HashAlgorithm sha256 = SHA256.Create();
 

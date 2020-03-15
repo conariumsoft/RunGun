@@ -6,14 +6,17 @@
     <SharedGUID>df3c9881-73e9-45c9-acb9-7f8df0b9269d</SharedGUID>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <Import_RootNamespace>Core</Import_RootNamespace>
+    <Import_RootNamespace>RunGun.Core</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)src\Crypto.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Collections.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Game\Weapons.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Utility\StringUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Utility\Crypto.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Entity.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)src\Networking\Bullshit.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Utility\EventHook.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\LevelGeometry.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)src\Networking\NetMessage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\Networking\Networking.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Networking\UdpBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Physics\CollisionSolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Physics\CommonPhysics.cs" />
