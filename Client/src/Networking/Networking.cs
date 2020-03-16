@@ -25,7 +25,6 @@ namespace RunGun.Client.Networking
 
 	class ClientArchitecture
 	{
-
 		UdpUser udpClient;
 
 		Queue<Received> networkMessageQueue = new Queue<Received>();
@@ -34,21 +33,24 @@ namespace RunGun.Client.Networking
 		bool connecting;
 		bool isListenThreadRunning = true;
 
-		public event Action<int, int> OnConnectAccept;
+		public event Action<Guid, int> OnConnectAccept;
 		public event Action<string> OnConnectDenied; // string denyReason
 		public event Action<string> OnKicked;
-		public event Action<int> OnPeerJoined;
-		public event Action<int> OnPeerLeft;
+		//public event Action<int> OnPeerJoined;
+		//public event Action<int> OnPeerLeft;
 		public event Action OnPing;
 		public event Action<Vector2, Vector2, Color> OnReceiveMapData;
 		public event Action<int, Vector2, Vector2, int> OnPlayerPosition;
 		public event Action<string> OnChatMessage;
-		public event Action OnPong;
-		public event Action<int> OnExistingPeer;
+		public event Action OnPingReply;
+		//public event Action<int> OnExistingPeer;
+		public event Action<string, int> OnAddEntity;
+		public event Action<int> OnDeleteEntity;
+		public event Action<int> OnGetLocalPlayerID;
+		public event Action<int, int, Vector2, Vector2, Vector2> OnEntityPosition;
 
 		public ClientArchitecture() {
 			
-
 		}
 
 		public void Connect(string ip, int port, string nickname) {
@@ -69,7 +71,7 @@ namespace RunGun.Client.Networking
 					}
 				}
 			});
-			udpClient.Send(String.Format("{0} {1}", (int)ClientCommand.CONNECT, nickname));
+			Send((int)ClientCommand.CONNECT, nickname);
 		}
 
 		public void Disconnect() {
@@ -92,32 +94,35 @@ namespace RunGun.Client.Networking
 			// Mein Herz Brennt
 		}
 
+		//------------------------------------------------------------------------------------------//
 		private void HandleConnectOK(string data) {
 			var args = data.Split(' ');
-			int clientAssignedID;
 			int serverPhysicsFrame;
+			Guid ourID;
 
-			if (args.Length < 2) return;
-			if (!int.TryParse(args[0], out clientAssignedID)) return;
+			//if (args.Length < 2) return;
+			if (!Guid.TryParse(args[0], out ourID)) return;
 			if (!int.TryParse(args[1], out serverPhysicsFrame)) return;
 			
-			OnConnectAccept?.Invoke(clientAssignedID, serverPhysicsFrame);
+			OnConnectAccept?.Invoke(ourID, serverPhysicsFrame);
 		}
 
 		private void HandleConnectDeny(string data) {
-
+			
 			OnConnectDenied?.Invoke(data);
 		}
-		private void HandlePong(string data) {
-			OnPong?.Invoke();
+
+		private void HandlePing(string data) {
+			OnPing?.Invoke();
 		}
-		private void HandlePlayerPosition(string data) {
+		private void HandlePingReply(string data) {
+			OnPingReply?.Invoke();
+		}
+
+		/*private void HandlePlayerPosition(string data) {
 			var args = data.Split(' ');
 			int id;
-			float x;
-			float y;
-			float vx;
-			float vy;
+			float x, y, vx, vy;
 			int stepIter;
 
 			if (!int.TryParse(args[0], out id)) return;
@@ -128,6 +133,51 @@ namespace RunGun.Client.Networking
 			if (!int.TryParse(args[5], out stepIter)) return;
 
 			OnPlayerPosition?.Invoke(id, new Vector2(x, y), new Vector2(vx, vy), stepIter);
+		}*/
+		
+		private void HandleAddEntity(string data) {
+			var args = data.Split(' ');
+
+			string entityType = args[0];
+			int entityID;
+
+			if (!int.TryParse(args[1], out entityID)) return;
+
+			OnAddEntity?.Invoke(entityType, entityID);
+
+		} 
+		private void HandleDeleteEntity(string data) {
+			var args = data.Split(' ');
+			int entityID;
+			if (!int.TryParse(args[0], out entityID)) return;
+
+			OnDeleteEntity?.Invoke(entityID);
+		}
+
+		private void HandleYourPID(string data) {
+			int pid;
+
+			if (!int.TryParse(data, out pid)) return;
+
+			OnGetLocalPlayerID?.Invoke(pid);
+
+		}
+		private void HandleEntityPosition(string data) {
+			var args = data.Split(' ');
+			int id;
+			float x, y, nx, ny, vx, vy;
+			int stepIter;
+
+			if (!int.TryParse(args[0], out id)) return;
+			if (!int.TryParse(args[1], out stepIter)) return;
+			if (!float.TryParse(args[2], out x)) return;
+			if (!float.TryParse(args[3], out y)) return;
+			if (!float.TryParse(args[4], out nx)) return;
+			if (!float.TryParse(args[5], out ny)) return;
+			if (!float.TryParse(args[6], out vx)) return;
+			if (!float.TryParse(args[7], out vy)) return;
+
+			OnEntityPosition?.Invoke(id, stepIter, new Vector2(x, y), new Vector2(nx, ny), new Vector2(vx, vy));
 		}
 
 		private void HandleKick(string data) {
@@ -140,7 +190,7 @@ namespace RunGun.Client.Networking
 			OnChatMessage?.Invoke(data);
 		}
 
-		private void HandleExistingUser(string data) {
+		/*private void HandleExistingUser(string data) {
 			var args = data.Split(' ');
 			int peerID;
 
@@ -162,7 +212,8 @@ namespace RunGun.Client.Networking
 
 			if (!int.TryParse(args[0], out newPeerID)) return;
 			OnPeerJoined?.Invoke(newPeerID);
-		}
+		}*/
+
 		private void HandleGetMapData(string data) {
 			var args = data.Split(' ');
 			int x, y, w, h;
@@ -180,6 +231,7 @@ namespace RunGun.Client.Networking
 		}
 
 		private void ProcessPacket(Received received) {
+			
 			string message = received.Message;
 			string netCommandIDAsString = StringUtils.ReadUntil(message, ' ');
 			ServerCommand command;
@@ -204,22 +256,37 @@ namespace RunGun.Client.Networking
 					HandleChatMessage(data);
 					break;
 				case ServerCommand.EXISTING_USER:
-					HandleExistingUser(data);
+					//HandleExistingUser(data);
 					break;
 				case ServerCommand.USER_JOINED:
-					HandlePeerJoined(data);
+					//HandlePeerJoined(data);
 					break;
 				case ServerCommand.USER_LEFT:
-					HandlePeerLeft(data);
+					//HandlePeerLeft(data);
 					break;
 				case ServerCommand.SEND_MAP_DATA:
 					HandleGetMapData(data);
 					break;
 				case ServerCommand.PLAYER_POS:
-					HandlePlayerPosition(data);
+					//HandlePlayerPosition(data);
 					break;
-				case ServerCommand.PONG:
-					HandlePong(data);
+				case ServerCommand.PING:
+					HandlePing(data);
+					break;
+				case ServerCommand.PING_REPLY:
+					HandlePingReply(data);
+					break;
+				case ServerCommand.YOUR_PID:
+					HandleYourPID(data);
+					break;
+				case ServerCommand.ADD_ENTITY:
+					HandleAddEntity(data);
+					break;
+				case ServerCommand.DEL_ENTITY:
+					HandleDeleteEntity(data);
+					break;
+				case ServerCommand.ENTITY_POS:
+					HandleEntityPosition(data);
 					break;
 				default:
 					break;

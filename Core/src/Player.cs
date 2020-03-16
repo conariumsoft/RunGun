@@ -18,14 +18,16 @@ namespace RunGun.Core
 		public float defense = 0;
 		public bool destroyWhenDead = false;
 
-		public int id;
+		public Guid UserGUID;
 
-		public Player(int cocksucker) {
+		public Player() {
 			position = new Vector2(64, 64);
 			nextPosition = new Vector2(64, 64);
 			boundingBox = new Vector2(16, 16);
+		}
 
-			id = cocksucker;
+		public Player(int id) : base(id) {
+
 		}
 
 		public Vector2 GetDrawPosition() {

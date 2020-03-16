@@ -1,18 +1,33 @@
 ﻿//using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework;
 using RunGun.Core.Physics;
+using System;
 
 namespace RunGun.Core
 {
 	public class Entity
 	{
+		public static int idIncrement = 1;
+
+		public int EntityID { get; set; }
 		public Vector2 position { get; set; }
 
 		public Entity() {
 			position = new Vector2();
+
+			EntityID = idIncrement;
+			idIncrement++;
+		}
+
+		public Entity(int id) : base() {
+			EntityID = id;
 		}
 
 		public virtual void Update(double delta) { }
+
+		public Vector2 GetDrawPosition() {
+			return new Vector2(0, 0);
+		}
 	}
 
 	public class PhysicalEntity : Entity
@@ -24,6 +39,17 @@ namespace RunGun.Core
 		public bool isFalling = true;
 		public bool applyGravity = true;
 		public float mass = 1;
+
+		public Disk<Vector2> positionHistory = new Disk<Vector2>(256);
+		public Disk<Vector2> velocityHistory = new Disk<Vector2>(256);
+
+		public PhysicalEntity() : base() {
+		
+		}
+
+		public PhysicalEntity(int id) : base(id) {
+
+		}
 
 		public virtual void Physics(float step) {
 			float x_friction = 0;
@@ -47,5 +73,10 @@ namespace RunGun.Core
 		public virtual void OnCollide(Vector2 separation, Vector2 normal) {
 
 		}
+	}
+
+	public class Barrel : PhysicalEntity
+	{
+
 	}
 }

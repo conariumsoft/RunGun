@@ -62,7 +62,9 @@ namespace RunGun.Server.Networking
 		}
 
 		public void Broadcast(IPEndPoint endpoint, ServerCommand code, string data) {
-			udpServer.Reply(code + " " + data, endpoint);
+			string message = (int)code + " " + data;
+			//Logging.NetOut(message);
+			udpServer.Reply(message, endpoint);
 		}
 	}
 }

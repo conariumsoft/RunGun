@@ -22,6 +22,8 @@ namespace RunGun.Client
 
     public class ClientMain : Game
     {
+        public int ourPID;
+
         public static SpriteFont font;
 
         ClientArchitecture client;
@@ -29,14 +31,11 @@ namespace RunGun.Client
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         List<CLevelGeometry> map = new List<CLevelGeometry>();
-        string username = "jommy";
-        float physicsClock;
         float pingClock = 0;
         float keepAlive = 0;
         float ping;
         Matrix screenTransform;
-       // static Player localPlayer;
-        static Player replicatedPlayer;
+        
         Texture2D rectTexture;
         KeyListener listenW;
         KeyListener listenA;
@@ -44,36 +43,38 @@ namespace RunGun.Client
         bool connected = false;
 
         Vector2 textpos = new Vector2(4, 4);
-        List<Player> otherPlayers;
 
         ChatSystem chat;
+        GameWorld world;
 
-        int iterator = 0;
         // TODO: play around and figure out nessecary buffer size (current = 1000)
-        Disk<Vector2> positionHistory = new Disk<Vector2>(1000);
-        Disk<Vector2> velocityHistory = new Disk<Vector2>(1000);
+        
         Disk<InputState> inputHistory = new Disk<InputState>(1000);
 
         FrameCounter frameCounter;
 
+        Player GetLocalPlayer() {
+            return (Player)world.GetEntity(ourPID);
+        }
+
         void OnWDown() {
-            client.Send(ClientCommand.PLR_JUMP);
+            client.Send(ClientCommand.MOVE_JUMP);
         }
         void OnWUp() {
-            client.Send(ClientCommand.PLR_STOP_JUMP);
+            client.Send(ClientCommand.MOVE_STOP_JUMP);
         }
         void OnADown() {
-            client.Send(ClientCommand.PLR_LEFT);
+            client.Send(ClientCommand.MOVE_LEFT);
 
         }
         void OnAUp() {
-            client.Send(ClientCommand.PLR_STOP_LEFT);
+            client.Send(ClientCommand.MOVE_STOP_LEFT);
         }
         void OnDDown() {
-            client.Send(ClientCommand.PLR_RIGHT);
+            client.Send(ClientCommand.MOVE_RIGHT);
         }
         void OnDUp() {
-            client.Send(ClientCommand.PLR_STOP_RIGHT);
+            client.Send(ClientCommand.MOVE_STOP_RIGHT);
         }
 
         static string reconstruct(List<string> list) {
@@ -92,18 +93,17 @@ namespace RunGun.Client
             chat.ReceivedMessage(message);
         }
 
+        void OnConnectionAccepted(Guid ourID, int sPhysFrame) {
+            connected = true;
+            world.physicsFrameIter = sPhysFrame;
+        }
+
         void OnConnectionDenied(string reason) {
 
         }
 
-        void OnConnectionAccepted(int clientAssignedID, int sPhysFrame) {
-            connected = true;
-
-            iterator = sPhysFrame;
-            //Console.WriteLine("iter: " + iterator);
-
-            replicatedPlayer.id = clientAssignedID;
-            // localPlayer.id = ourId;
+        void OnGetLocalPlayerID(int pid) {
+            ourPID = pid;
         }
 
         void OnReceiveMapData(Vector2 pos, Vector2 size, Color color) {
@@ -111,65 +111,69 @@ namespace RunGun.Client
             map.Add(new CLevelGeometry(GraphicsDevice, pos, size, color));
         }
 
-        void OnPong() {
+        void OnPingReply() {
             // before we reset keepAlive, that is our ping
             ping = keepAlive;
             keepAlive = 0;
         }
 
         void OnPing() {
-            client.Send(ClientCommand.PONG);
+            client.Send(ClientCommand.PING_REPLY);
         }
+        void OnAddEntity(string entityType, int entityID) {
 
-        void OnPeerJoined(int peerID) {
-            var newPlayer = new Player(peerID);
-            Console.WriteLine("Uh oh");
-            otherPlayers.Add(newPlayer);
-        }
+            if (entityType == "Player") {
+                var plr = new Player(entityID);
 
-        void OnPeerLeft(int peerID) {
-            foreach (var plr in otherPlayers.ToArray()) {
-                if (plr.id == peerID) {
-                    otherPlayers.Remove(plr);
-                }
+                world.AddEntity(plr);
             }
         }
-        void OnExistingPeer(int peerID) {
-            var newPlr = new Player(peerID);
-            Console.WriteLine("CUMMMM");
-            otherPlayers.Add(newPlr);
+
+        void OnDeleteEntity(int entityID) {
+            world.RemoveEntity(entityID);
         }
 
-        void OnPlayerPosition(int id, Vector2 pos, Vector2 vel, int stepIter) {
+        void OnEntityPosition(int id, int step, Vector2 pos, Vector2 nextPos, Vector2 vel) {
 
-            if (id == replicatedPlayer.id) {
-                replicatedPlayer.nextPosition = pos;
-                replicatedPlayer.velocity = vel;
+            if (!world.HasEntity(id)) return; // should prolly bitch about this
+            var entity = world.GetEntity(id);
 
-                int diff = iterator - stepIter;
-                int poo = iterator - diff;
+            int diff = world.physicsFrameIter - step;
 
-                positionHistory.Set(poo, replicatedPlayer.nextPosition);
-                velocityHistory.Set(poo, replicatedPlayer.velocity);
+            entity.position = pos;
 
-                for (int i = poo; i < iterator; i++) {
+            if (entity is PhysicalEntity e) {
+                e.nextPosition = nextPos;
+                e.velocity = vel;
 
-                    var input = inputHistory.Get(i);
+                if (entity is Player p ) {
+                    if (p.EntityID == ourPID) {
+                        var state = world.GetState(e, step);
+                        if (state == null) return;
 
-                    replicatedPlayer.moveLeft = input.a;
-                    replicatedPlayer.moveRight = input.d;
-                    replicatedPlayer.moveJump = input.w;
+                        world.SetState(e, step, new EntityGameState {
+                            position = p.position,
+                            velocity = p.velocity,
+                            nextPosition = p.nextPosition,
+                            step = step,
+                        });
 
-                    ProcessPhysics(replicatedPlayer, PhysicsProperties.PHYSICS_TIMESTEP);
-                    positionHistory.Set(i, replicatedPlayer.nextPosition);
-                    velocityHistory.Set(i, replicatedPlayer.velocity);
-                }
-                iterator = stepIter;
-            } else {
-                foreach (var plr in otherPlayers) {
-                    if (id == plr.id) {
-                        plr.nextPosition = pos;
-                        plr.velocity = vel;
+                        for (int i = step; i < world.physicsFrameIter; i++) {
+                            var input = inputHistory.Get(i);
+
+                            p.moveLeft = input.a;
+                            p.moveRight = input.d;
+                            p.moveJump = input.w;
+
+                            world.ProcessEntityPhysics(p, PhysicsProperties.PHYSICS_TIMESTEP, i);
+
+                            world.SetState(p, i, new EntityGameState {
+                                position = p.position,
+                                velocity = p.velocity,
+                                nextPosition = p.nextPosition,
+                                step = step
+                            });
+                        }
                     }
                 }
             }
@@ -182,6 +186,10 @@ namespace RunGun.Client
 
         public ClientMain()
         {
+            world = new GameWorld();
+
+            world.OnPhysicsStep += PhysicsCallback;
+
             listenW = new KeyListener(Keys.W, OnWDown, OnWUp);
             listenA = new KeyListener(Keys.A, OnADown, OnAUp);
             listenD = new KeyListener(Keys.D, OnDDown, OnDUp);
@@ -197,21 +205,17 @@ namespace RunGun.Client
                 IsFullScreen = false,
             };
             Content.RootDirectory = "Content";
-           // localPlayer = new Player();
-            replicatedPlayer = new Player(-1);
-            otherPlayers = new List<Player>();
 
+            client.OnAddEntity += OnAddEntity;
+            client.OnDeleteEntity += OnDeleteEntity;
+            client.OnGetLocalPlayerID += OnGetLocalPlayerID;
             client.OnConnectAccept += OnConnectionAccepted;
             client.OnConnectDenied += OnConnectionDenied;
-            client.OnPeerJoined += OnPeerJoined;
-            client.OnPeerLeft += OnPeerLeft;
-            client.OnPlayerPosition += OnPlayerPosition;
-            client.OnPong += OnPong;
+            client.OnEntityPosition += OnEntityPosition;
+            client.OnPingReply += OnPingReply;
             client.OnReceiveMapData += OnReceiveMapData;
             client.OnChatMessage += OnChatMessage;
             client.OnPing += OnPing;
-            client.OnExistingPeer += OnExistingPeer;
-
 
             client.Connect("127.0.0.1", 22222, "bastard");
         }
@@ -224,7 +228,6 @@ namespace RunGun.Client
             Window.AllowUserResizing = true;
             Window.AllowAltF4 = true;
             Window.Title = "RunGun Client";
-
 
             IsFixedTimeStep = false;
 
@@ -244,8 +247,6 @@ namespace RunGun.Client
 
         protected override void LoadContent() {
             spriteBatch = new SpriteBatch(GraphicsDevice);
-
-
             font = this.Content.Load<SpriteFont>("Font");
         }
 
@@ -253,34 +254,29 @@ namespace RunGun.Client
             client.Send(ClientCommand.DISCONNECT);
         }
 
-        void ProcessPhysics(Player e, float step) {
-
-            e.Physics(step);
-
-            e.isFalling = true;
-            foreach (var geom in map) {
-                CollisionSolver.SolveEntityAgainstGeometry(e, geom);
-            }
-        }
-
         // TODO: refactor this into core
-        void Physics(float step) {
-            iterator++;
+        void PhysicsCallback(float step, int iterator) {
 
-            positionHistory.Set(iterator, replicatedPlayer.position);
-            velocityHistory.Set(iterator, replicatedPlayer.velocity);
+            var player = world.GetEntity(ourPID) as Player;
+
+            positionHistory.Set(iterator, player.position);
+            velocityHistory.Set(iterator, player.velocity);
+
+            KeyboardState kbs = Keyboard.GetState();
+
+            bool w = kbs.IsKeyDown(Keys.W);
+            bool a = kbs.IsKeyDown(Keys.A);
+            bool d = kbs.IsKeyDown(Keys.D);
+
+            player.moveJump = w;
+            player.moveLeft = a;
+            player.moveRight = d;
 
             inputHistory.Set(iterator, new InputState() {
-                w = Keyboard.GetState().IsKeyDown(Keys.W),
-                a = Keyboard.GetState().IsKeyDown(Keys.A),
-                d = Keyboard.GetState().IsKeyDown(Keys.D)
+                w = w,
+                a = a,
+                d = d
             });
-
-            ProcessPhysics(replicatedPlayer, step);
-
-            foreach (var plr in otherPlayers) {
-                ProcessPhysics(plr, step);
-            }
         }
 
         protected override void Update(GameTime gameTime)
@@ -295,22 +291,11 @@ namespace RunGun.Client
             if (!connected)
                 return;
 
+            world.Update(dt);
+
             listenA.Update();
             listenW.Update();
             listenD.Update();
-
-            //localPlayer.Update(dt);
-            replicatedPlayer.Update(dt);
-
-            foreach (var plr in otherPlayers) {
-                plr.Update(dt);
-            }
-
-            physicsClock += dt;
-            while (physicsClock > PhysicsProperties.PHYSICS_TIMESTEP) {
-                physicsClock -= PhysicsProperties.PHYSICS_TIMESTEP;
-                Physics(PhysicsProperties.PHYSICS_TIMESTEP);
-            }
 
             pingClock += dt;
             keepAlive += dt;
@@ -329,13 +314,6 @@ namespace RunGun.Client
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            KeyboardState kbs = Keyboard.GetState();
-
-            replicatedPlayer.moveJump = kbs.IsKeyDown(Keys.W);
-            replicatedPlayer.moveLeft = kbs.IsKeyDown(Keys.A);
-            replicatedPlayer.moveRight = kbs.IsKeyDown(Keys.D);
-
-
             base.Update(gameTime);
         }
 
@@ -349,20 +327,17 @@ namespace RunGun.Client
                 geom.Draw(spriteBatch);
             }
 
-            foreach (var plr in otherPlayers) {
-                spriteBatch.Draw(rectTexture, plr.GetDrawPosition(), Color.Blue);
+            foreach (var entity in world.entities) {
+                if (entity is Player p)
+                    spriteBatch.Draw(rectTexture, p.GetDrawPosition(), Color.Blue);
             }
-
-            //spriteBatch.Draw(rectTexture, localPlayer.GetDrawPosition(), Color.White);
-            spriteBatch.Draw(rectTexture, replicatedPlayer.GetDrawPosition(), Color.Green);
 
             double averageFPS = frameCounter.GetAverageFramerate();
 
-            string debugdata = "fps: " + Math.Floor(averageFPS) + " ping: " + Math.Floor(ping*1000) + "ms\n"+
-                "peers: " + otherPlayers.Count + " ";
+            string debugdata = "fps: " + Math.Floor(averageFPS) + " ping: " + Math.Floor(ping * 1000) + "ms\n" +
+                "entities: " + world.entities.Count + " ";
 
             spriteBatch.DrawString(font, debugdata, textpos, Color.White);
-
 
             chat.Draw(spriteBatch);
 

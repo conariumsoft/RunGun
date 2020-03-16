@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 
 namespace RunGun.Core.Networking
 {
-	
-
 	// commands sent from server
 	public enum ServerCommand : int {
 		CONNECT_OK,
@@ -18,7 +16,12 @@ namespace RunGun.Core.Networking
 		SEND_MAP_DATA,
 		EXISTING_USER, // send current connections to new clients
 		PLAYER_POS,
-		PONG,
+		PING,
+		PING_REPLY,
+		YOUR_PID, // tell the client what their playerID is.
+		ADD_ENTITY, // int EntityType, int EntityID
+		DEL_ENTITY, // int EntityID
+		ENTITY_POS, // int EntityID, x, y, nextX, nextY, velX, velY
 	}
 
 	// commands sent from the client
@@ -27,17 +30,17 @@ namespace RunGun.Core.Networking
 		CONNECT, // string nickname
 		DISCONNECT, 
 		SAY, // string chatMessage
-		PLR_LEFT,
+		MOVE_LEFT,
 		GET_ONLINE_PLAYERS,
-		PLR_RIGHT,
-		PLR_JUMP,
-		PLR_SHOOT,
-		PLR_STOP_LEFT,
-		PLR_STOP_RIGHT,
-		PLR_STOP_JUMP,
-		PLR_STOP_SHOOT,
+		MOVE_RIGHT,
+		MOVE_JUMP,
+		SHOOT,
+		MOVE_STOP_LEFT,
+		MOVE_STOP_RIGHT,
+		MOVE_STOP_JUMP,
+		STOP_SHOOT,
 		GET_SERVER_NAME,
 		PING,
-		PONG,
+		PING_REPLY,
 	}
 }

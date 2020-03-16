@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)src\Collections.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)src\GameWorld.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Game\Weapons.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Utility\StringUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)src\Utility\Crypto.cs" />

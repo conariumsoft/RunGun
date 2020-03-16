@@ -8,104 +8,93 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
-using NLua;
-using System.IO;
-using RunGun.Server.Utils;
 using RunGun.Core.Utils;
 
 namespace RunGun.Server
 {
 	class NetworkPeer
 	{
+
+		public Guid ID;
+
 		public IPEndPoint IPAddress { get; set; }
 
 		public NetworkPeer(IPEndPoint endpoint) {
 			IPAddress = endpoint;
+
+			ID = Guid.NewGuid();
 		}
 	}
 
 	class User : NetworkPeer
 	{
-
 		public string Nickname { get; set; }
 		public double KeepAlive { get; set; }
-		public int ID { get; set; }
 
-		public User(IPEndPoint endpoint, string name, int id) : base(endpoint) {
+		public User(IPEndPoint endpoint, string name) : base(endpoint) {
 			Nickname = name;
-			ID = id;
 		}
 	}
 
 	// TODO: make server occasionally talk shit in chat
 	class Server
 	{
-		// Lua VM shit
-		Lua luaState = new Lua();
-
-		// UDP Network Thread Bullshit
-		UdpThread udpThread;
 
 		bool isRunning = true;
-		//GameServer server;
-
-		public static int userIDCounter;
-
-		static List<User> connectedUsers;
-		List<LevelGeometry> geometry;
-		static List<Player> players; // eventually this will be entities list
 		double delta = 0;
 		double networkRelayClock = 0;
 		int iterator = 0;
 
-		float physicsClock = 0;
+		UdpThread udpThread;
+		List<User> connectedUsers;
+		GameWorld world;
 
 		public Server(IPEndPoint endpoint) {
+			Logging.Out("Loading plugins...");
 
+			PluginManager.LoadPlugins();
+
+			Logging.Out("Starting UDP Listener Thread...");
 			udpThread = new UdpThread(endpoint);
 
-			luaState.LoadCLRPackage();
-			luaState.DoString(FileUtils.ReadEmbedded(LuaUtils.SCRIPT_SOURCE_DIR + ".test.lua"));
-
-			string[] filenames = Directory.GetDirectories("plugins");
-
-			// Plugin loading
-			// TODO: sanity check this shit.
-			foreach (var filename in filenames) {
-				using (StreamReader stream = new StreamReader(filename + "/init.lua")) {
-					string read = stream.ReadToEnd();
-
-					luaState.DoString(read);
-				}
-			}
-
+			Logging.Out("Initializing gameworld...");
+			world = new GameWorld();
 			connectedUsers = new List<User>();
-			players = new List<Player>();
 
-			geometry = new List<LevelGeometry>() {
+			world.levelGeometries = new List<LevelGeometry>() {
 				new LevelGeometry(new Vector2(0, 10), new Vector2(20, 400), new Color(1.0f, 0.0f, 0.0f)),
 				new LevelGeometry(new Vector2(10, 420), new Vector2(800, 40), new Color(0.0f, 1.0f, 1.0f))
 			};
 		}
 
 		~Server() {}
+
 		//--------------------------------------------------------------------------------
 		// 
-		void HandleDisconnect(User user, string data) {
-			
-			connectedUsers.Remove(user);
-			SendToAll(ServerCommand.USER_LEFT, user.ID.ToString());
-			SendToAll(ServerCommand.CHAT_MSG, user.Nickname + " left.");
+		void GlobalMessage(string message, ConsoleColor color) {
+			Logging.Out(message, color);
+			SendToAll(ServerCommand.CHAT_MSG, message);
 		}
+
+		void HandleDisconnect(User user, string data) {
+			var player = GetPlayerOfUser(user);
+			SendToAllExcept(user, ServerCommand.USER_LEFT, user.ID.ToString());
+			SendToAllExcept(user, ServerCommand.DEL_ENTITY, player.EntityID.ToString());
+			GlobalMessage(user.Nickname + " left.", ConsoleColor.Gray);
+			world.RemoveEntity(player);
+			connectedUsers.Remove(user);
+		}
+
 		void HandleSay(User user, string data) {
 			// TODO: Sanitize string?
-			SendToAll(ServerCommand.CHAT_MSG, user.Nickname + " : " + data);
+			GlobalMessage(user.Nickname + " : "+data, ConsoleColor.White);
 		}
+
 		void HandlePong(User user, string data) {
 
 		}
 		void HandlePing(User user, string data) {
-			Send(user, ServerCommand.PONG, "");
+			Send(user, ServerCommand.PING_REPLY, "");
 			user.KeepAlive = 0;
 		}
 		void HandleConnect(NetworkPeer peer, string data) {
@@ -113,7 +102,7 @@ namespace RunGun.Server
 
 			string requestedNickname = args[0];
 
-		/*	foreach (User usr in connectedUsers) {
+			/*foreach (User usr in connectedUsers) {
 				if (usr.Nickname == requestedNickname) {
 					Send(peer, ServerCommand.CONNECT_DENY, "Nickname is already in use.");
 					return;
@@ -125,28 +114,31 @@ namespace RunGun.Server
 				return;
 			}*/
 
-			userIDCounter++;
-
-			User user = new User(peer.IPAddress, requestedNickname, userIDCounter);
+			User user = new User(peer.IPAddress, requestedNickname);
 			
-			Player player = new Player(userIDCounter);
+			Player player = new Player();
+			player.UserGUID = user.ID;
 			// notify join (before adding to clients)
-			Send(user, ServerCommand.CONNECT_OK, user.ID + " " + iterator);
-			SendToAll(ServerCommand.USER_JOINED, user.ID.ToString());
+			Send(user, ServerCommand.CONNECT_OK, user.ID.ToString() + " "+ world.physicsFrameIter);
+			SendToAllExcept(user, ServerCommand.USER_JOINED, user.ID.ToString());
+
+			world.AddEntity(player);
 			foreach (var aPeer in connectedUsers) {
-				Send(user, ServerCommand.EXISTING_USER, aPeer.ID.ToString());
+				Send(aPeer, ServerCommand.ADD_ENTITY, "Player " + player.EntityID);
 			}
-			
+
+			// TODO: change to map.entities
+			foreach (Entity e in world.entities) {
+				Send(user, ServerCommand.ADD_ENTITY, "Player " + e.EntityID);
+			}
+
 			connectedUsers.Add(user);
-			players.Add(player);
 
+			Send(user, ServerCommand.YOUR_PID, player.EntityID.ToString());
 			Send(user, ServerCommand.CHAT_MSG, "[Server] connected to " + GetServerIP() + ":"+GetServerPort());
+			GlobalMessage(user.Nickname + " joined.", ConsoleColor.Gray);
 
-			SendToAll(ServerCommand.CHAT_MSG, user.Nickname + " joined.");
-
-			// TODO: fix rEEEEEEEEEEEEEEEEEEE
-			// sends map to client
-			foreach (LevelGeometry gm in geometry) {
+			foreach (LevelGeometry gm in world.levelGeometries) {
 				Send(user, ServerCommand.SEND_MAP_DATA, gm.Serialize());
 			}
 		}
@@ -180,6 +172,7 @@ namespace RunGun.Server
 		//--------------------------------------------------------------------------------
 
 		private void DecodePacket(Received received) {
+
 			string message = received.Message;
 			string netCommandIDAsString = StringUtils.ReadUntil(message, ' ');
 			int netCommandIDAsInt;
@@ -210,22 +203,22 @@ namespace RunGun.Server
 					case ClientCommand.PING:
 						HandlePing(user, data);
 						break;
-					case ClientCommand.PLR_LEFT:
+					case ClientCommand.MOVE_LEFT:
 						HandleStartMoveLeft(user);
 						break;
-					case ClientCommand.PLR_STOP_LEFT:
+					case ClientCommand.MOVE_STOP_LEFT:
 						HandleStopMoveLeft(user);
 						break;
-					case ClientCommand.PLR_RIGHT:
+					case ClientCommand.MOVE_RIGHT:
 						HandleStartMoveRight(user);
 						break;
-					case ClientCommand.PLR_STOP_RIGHT:
+					case ClientCommand.MOVE_STOP_RIGHT:
 						HandleStopMoveRight(user);
 						break;
-					case ClientCommand.PLR_JUMP:
+					case ClientCommand.MOVE_JUMP:
 						HandleStartMoveJump(user);
 						break;
-					case ClientCommand.PLR_STOP_JUMP:
+					case ClientCommand.MOVE_STOP_JUMP:
 						HandleStopMoveJump(user);
 						break;
 					default:
@@ -283,9 +276,11 @@ namespace RunGun.Server
 			throw new ApplicationException("No user matching IPEndPoint found. Check with IsUserConnected first.");
 		}
 		Player GetPlayerOfUser(User user) {
-			foreach (var p in players) {
-				if (p.id == user.ID) {
-					return p;
+			foreach (var e in world.entities) {
+				if (e is Player p) {
+					if (p.UserGUID == user.ID) {
+						return p;
+					}
 				}
 			}
 			throw new ApplicationException("No player associated with user. This is a serious error. Notify Josh.");
@@ -313,23 +308,6 @@ namespace RunGun.Server
 			Send(user.IPAddress, code, message);
 		}
 
-		void ProcessPhysics(Player e, float step) {
-			e.Physics(step);
-
-			e.isFalling = true;
-			foreach (var geom in geometry) {
-				CollisionSolver.SolveEntityAgainstGeometry(e, geom);
-			}
-		}
-
-		void Physics(float step) {
-			iterator++;
-
-			foreach (var player in players) {
-				ProcessPhysics(player, step);
-			}
-		}
-
 		private void UpdateKeepAlive(double dt) {
 			// we copy ToArray so we can remove indices without crash
 			// LUL
@@ -337,10 +315,12 @@ namespace RunGun.Server
 				user.KeepAlive = user.KeepAlive + dt;
 				if (user.KeepAlive > 10) {
 					// TODO: client disconnect
-					players.Remove(GetPlayerOfUser(user));
-					connectedUsers.Remove(user);
 
-					SendToAll(ServerCommand.USER_LEFT, user.ID.ToString());
+					var player = GetPlayerOfUser(user);
+					SendToAllExcept(user, ServerCommand.USER_LEFT, user.ID.ToString());
+					SendToAllExcept(user, ServerCommand.DEL_ENTITY, player.EntityID.ToString());
+					world.RemoveEntity(player);
+					connectedUsers.Remove(user);
 				}
 			}
 		}
@@ -349,15 +329,18 @@ namespace RunGun.Server
 			networkRelayClock += dt;
 			if (networkRelayClock > (1.0f / 30.0f)) {
 				networkRelayClock = 0;
-
-				foreach (var plr in players) {
-					// TODO: see how many packets we can combine...
-					string oppe = String.Format("{0} {1} {2} {3} {4} {5}",
-						plr.id,
-						plr.nextPosition.X, plr.nextPosition.Y,
-						plr.velocity.X, plr.velocity.Y, iterator
-					);
-					SendToAll(ServerCommand.PLAYER_POS, oppe);
+				
+				foreach (var entity in world.entities) {
+					if (entity is PhysicalEntity pe) {
+						// TODO: see how many packets we can combine...
+						string packet = String.Format("{0} {1} {2} {3} {4} {5} {6} {7}",
+							pe.EntityID, iterator,
+							pe.position.X, pe.position.Y,
+							pe.nextPosition.X, pe.nextPosition.Y,
+							pe.velocity.X, pe.velocity.Y
+						);
+						SendToAll(ServerCommand.ENTITY_POS, packet);
+					}
 				}
 			}
 		}
@@ -366,14 +349,7 @@ namespace RunGun.Server
 			ReadPacketQueue();
 			UpdateNetRelay(dt);
 
-			physicsClock += (float)delta;
-			while (physicsClock > PhysicsProperties.PHYSICS_TIMESTEP) {
-				physicsClock -= PhysicsProperties.PHYSICS_TIMESTEP;
-				Physics(PhysicsProperties.PHYSICS_TIMESTEP);
-			}
-
-			foreach (var player in players)
-				player.Update(dt);
+			world.Update(delta);
 
 			UpdateKeepAlive(dt);
 		}
