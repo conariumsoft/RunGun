@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using RunGun.Core.Game.Guns;
 using RunGun.Core.Physics;
+using RunGun.Core.Rendering;
 using System;
 using System.Text;
 
@@ -11,9 +13,12 @@ namespace RunGun.Core.Game
 
 	public class Player : Entity
 	{
+
 		float walkAccelleration = 1000;
 		float maxWalkspeed = 200;
-		float jumpPower = 300;
+		float jumpPower = 450;
+		float thrustPower = 100;
+
 		public bool destroyWhenDead = false;
 		
 		public bool moveLeft;
@@ -65,11 +70,18 @@ namespace RunGun.Core.Game
 			return Position - (boundingBox);
 		}
 
-		public override void Update(double delta) {
+		public override void Update(float delta) {
+			base.Update(delta);
 
 			bulletTimer -= delta;
+		}
 
-			
+		public override void ClientUpdate(float delta) {
+			base.ClientUpdate(delta);
+		}
+
+		public override void ServerUpdate(float delta) {
+			base.ServerUpdate(delta);
 		}
 
 		public override void OnCollide(Vector2 separation, Vector2 normal) {
@@ -106,11 +118,24 @@ namespace RunGun.Core.Game
 			}
 			if (moveJump && IsFalling == false) {
 				IsFalling = true;
-				y_thrust = -(jumpPower * Mass);
+				if (moveLeft) {
+					x_thrust = -(thrustPower * Mass);
+					y_thrust = -(jumpPower/2 * Mass);
+				} else if (moveRight) {
+					x_thrust = (thrustPower * Mass);
+					y_thrust = -(jumpPower/2 * Mass);
+				} else {
+					y_thrust = -(jumpPower * Mass);
+				}
 			}
-
 			Velocity += new Vector2(x_thrust, y_thrust);
+		}
 
+		public override void Draw() {
+			base.Draw();
+			ShapeRenderer.DrawRect(color, GetDrawPosition(), boundingBox * 2);
+			// old method that I am obsolEEting
+			//spriteBatch.Draw(PlayerTexture, GetDrawPosition(), color);
 		}
 	}
 }

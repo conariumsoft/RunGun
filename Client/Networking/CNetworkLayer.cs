@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace RunGun.Client.Networking
 {
-	public class PacketEvent : Event
+	public class PacketEvent
 	{
 		//public NetMsg cmd;
 		public List<string> args;
@@ -24,7 +24,7 @@ namespace RunGun.Client.Networking
 		public List<string> GetArguments() { return args; }
 	}
 
-	class ClientArchitecture
+	class CNetworkLayer
 	{
 		UdpUser udpClient;
 
@@ -49,7 +49,7 @@ namespace RunGun.Client.Networking
 		public event Action<short> OnGetLocalPlayerID;
 		public event Action<short, int, Vector2, Vector2, Vector2> OnEntityPosition;
 
-		public ClientArchitecture() {
+		public CNetworkLayer() {
 			
 		}
 
@@ -181,11 +181,10 @@ namespace RunGun.Client.Networking
 			short y = BitConverter.ToInt16(packet, 2);
 			short w = BitConverter.ToInt16(packet, 4);
 			short h = BitConverter.ToInt16(packet, 6);
-			byte r = packet[7];
-			byte g = packet[8];
-			byte b = packet[9];
-
-			OnReceiveMapData?.Invoke(new Vector2(x, y), new Vector2(w, h), new Color(r, g, b, (byte)0));
+			byte r = packet[8];
+			byte g = packet[9];
+			byte b = packet[10];
+			OnReceiveMapData?.Invoke(new Vector2(x, y), new Vector2(w, h), new Color(r, g, b));
 		}
 
 		private void ProcessPacket(Received received) {
@@ -213,7 +212,7 @@ namespace RunGun.Client.Networking
 				case ServerCommand.KICK:
 					HandleKick(packet);
 					break;
-				case ServerCommand.CHAT_MSG:
+				case ServerCommand.CHAT_RELAY:
 					HandleChatMessage(packet);
 					break;
 				case ServerCommand.EXISTING_USER:
@@ -274,7 +273,7 @@ namespace RunGun.Client.Networking
 			}
 		}
 
-		public void Update(double dt) {
+		public void Update(float dt) {
 			ReadPacketQueue();
 		}
 	}

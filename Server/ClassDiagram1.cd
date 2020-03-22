@@ -1,0 +1,274 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="RunGun.Core.Game.Bullet" Collapsed="true">
+    <Position X="7.5" Y="7" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>IAQAAAAAAABAAgBAAAIAAAAAAAAAAAAAAAAAABAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Bullet.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="RunGun.Core.Game.Entity" Collapsed="true">
+    <Position X="8.75" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>YAQJCAAEAAAAAgAggAIAAAAAAAAAQCAoAgAAAgCFAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Entity.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="RunGun.Core.Game.Player" Collapsed="true">
+    <Position X="9.75" Y="7" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>YRQBABIIAAAAEgAAAAoJAAEAAAAABACAAgAASkAgAOo=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Player.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.GameWorld" Collapsed="true">
+    <Position X="12.25" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAQAAAIAQAACAgAAAAOBAABAAAAAAQAAAIAAAgAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\GameWorld.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="RunGun.Core.LevelGeometry" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="10.5" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAggAgAAAAAAAAIAAAAAAAAAAAgAAAAIA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\LevelGeometry.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="RunGun.Core.Disk&lt;T&gt;" Collapsed="true">
+    <Position X="16.75" Y="8.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAABABAAIAAAAAAAAAAAAAAAABAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Collections.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Logging" Collapsed="true">
+    <Position X="18.5" Y="6" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAAAAAAAAAAAAQABACAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Log.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Game.Guns.BaseGun" Collapsed="true">
+    <Position X="7.5" Y="8.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AABAAAAAAAAAgAACQAAACAAAQAAMAAAAQAAAAAEAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Weapons.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Game.Guns.Rifle" Collapsed="true">
+    <Position X="7.5" Y="9.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Weapons.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Networking.UdpBase" Collapsed="true">
+    <Position X="7.75" Y="10.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAQ=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Networking\UdpBase.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Physics.CollisionSolver" Collapsed="true">
+    <Position X="16.25" Y="6" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAEAAAACAAACAQAAAAAAAAAAAAAAAAAgAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Physics\CollisionSolver.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Physics.PhysicsProperties" Collapsed="true">
+    <Position X="16.25" Y="3.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>CAAAAAAAAAAAAAQAAAABAAACAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Physics\PhysicsProperties.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Rendering.ShapeRenderer" Collapsed="true">
+    <Position X="18.5" Y="6.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEAAAAAAAQEAAAAAAAAAQAAAAAAAAEAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Rendering\ShapeRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Rendering.TextRenderer" Collapsed="true">
+    <Position X="18.5" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEgAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAEAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Rendering\TextRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Utility.Cryptography" Collapsed="true">
+    <Position X="18.5" Y="3.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAQAAACAAAAQAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Utility\Crypto.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Core.Utils.StringUtils" Collapsed="true">
+    <Position X="16.25" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAIAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Utility\StringUtils.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Utils.LuaUtils" Collapsed="true">
+    <Position X="16.25" Y="6.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAA=</HashCode>
+      <FileName>Lua\LuaUtils.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Utils.FileUtils" Collapsed="true">
+    <Position X="16.25" Y="5.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>FileUtils.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Networking.UdpListener" Collapsed="true">
+    <Position X="9.75" Y="10.75" Width="1.25" />
+    <TypeIdentifier>
+      <HashCode>AAQAAABAACCEAIAAAAAAAAAgAAAAAAACICAAAAACAAA=</HashCode>
+      <FileName>Networking\UdpListener.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Chat" Collapsed="true">
+    <Position X="18.5" Y="5.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAgACAQAIAAAAAAAAAA=</HashCode>
+      <FileName>Chat.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.PluginManager" Collapsed="true">
+    <Position X="11.75" Y="12" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>EAEAiAAAACQgAAAAgEAAAAABAAQBABAQAAAgAAAAAAA=</HashCode>
+      <FileName>Plugin.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Plugin" Collapsed="true">
+    <Position X="9.25" Y="13.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAICBAAAAwAQIAAAAAAAAABAgAAAAAQAAAAAAIIA=</HashCode>
+      <FileName>Plugin.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.ServerProgram" Collapsed="true">
+    <Position X="14.75" Y="13" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAACAAAAAAAAABAAABAAAAAA=</HashCode>
+      <FileName>ServerProgram.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.NetworkPeer" Collapsed="true">
+    <Position X="13.75" Y="8.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAACAAA=</HashCode>
+      <FileName>Server.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.User" Collapsed="true">
+    <Position X="13.75" Y="9.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAA=</HashCode>
+      <FileName>Server.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="RunGun.Server.Server" Collapsed="true">
+    <Position X="11.75" Y="12.5" Width="4.5" />
+    <TypeIdentifier>
+      <HashCode>CAQwFNBIIDAkACBAEFAAAAByAAAECQkYUQQggEECkI8=</HashCode>
+      <FileName>Server.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Struct Name="RunGun.Core.Networking.Received" Collapsed="true">
+    <Position X="11.5" Y="10.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIACA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Networking\UdpBase.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Struct Name="RunGun.Server.LuaCallback" Collapsed="true">
+    <Position X="9.25" Y="12.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAQAA=</HashCode>
+      <FileName>Plugin.cs</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Interface Name="RunGun.Core.Game.IEntityCollidable" Collapsed="true">
+    <Position X="16.75" Y="11.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Shit.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="RunGun.Core.Game.IUpdateableRG" Collapsed="true">
+    <Position X="16.75" Y="9.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Shit.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="RunGun.Core.Game.IDrawableRG" Collapsed="true">
+    <Position X="16.75" Y="10.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Shit.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Enum Name="RunGun.Core.Game.BulletDirection" Collapsed="true">
+    <Position X="20.25" Y="11.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAgAAAAAAAAAAAAICAAAgAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Bullet.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Core.Game.Looking" Collapsed="true">
+    <Position X="18.5" Y="12.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAIAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Player.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Core.Game.Facing" Collapsed="true">
+    <Position X="18.5" Y="13.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAgAAAAAAAAAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Player.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Core.Game.Guns.AccuracyStat" Collapsed="true">
+    <Position X="18.5" Y="11.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAAgAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Game\Weapons.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Core.Networking.ServerCommand" Collapsed="true">
+    <Position X="10" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAAFAAAAAAIAAAggEAACAACAABAAEAAAAAEEEBAAIIA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Networking\Networking.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Core.Networking.ClientCommand" Collapsed="true">
+    <Position X="11.5" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>YIAkAQAEAAAAAAAgAgAAAgCAQAAAAAAAgASBBAIEQAA=</HashCode>
+      <FileName>C:\Users\josh\source\repos\rungun\Core\Networking\Networking.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="RunGun.Server.LogLevel" Collapsed="true">
+    <Position X="20.25" Y="12.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAAAAAAAAAAAAAAAEAAgAAAAAAAAAAAA=</HashCode>
+      <FileName>Chat.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace RunGun.Core.Physics
 {
-	public class CollisionSolver
+	public static class CollisionSolver
 	{
 
 		public static void SolveEntityAgainstGeometry(Entity e, LevelGeometry geom) {

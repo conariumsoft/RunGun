@@ -18,9 +18,9 @@ namespace AndroidClient
 	{
 		protected override void OnCreate(Bundle bundle) {
 			base.OnCreate(bundle);
-			//var g = new ClientMain("nick", "127.0.0.1", "22222");
-			//SetContentView((View)g.Services.GetService(typeof(View)));
-			//g.Run();
+			var g = new ClientMain("nick", "127.0.0.1", "22222");
+			SetContentView((View)g.Services.GetService(typeof(View)));
+			g.Run();
 		}
 	}
 }

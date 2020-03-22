@@ -6,8 +6,9 @@ using System;
 
 namespace RunGun.Core.Game
 {
-	public class Entity
+	public class Entity : IUpdateableRG, IDrawableRG
 	{
+
 		public Vector2 boundingBox = new Vector2(16, 16);
 		public short EntityID { get; set; }
 		public Vector2 Position;
@@ -52,28 +53,18 @@ namespace RunGun.Core.Game
 
 		}
 
-		public virtual void Update(double delta) { }
+		public virtual void Update(float delta) { }
 
-		public virtual void ServerUpdate(double delta) { }
+		public virtual void ServerUpdate(float delta) { }
 
-		public virtual void ClientUpdate(double delta) { }
+		public virtual void ClientUpdate(float delta) { }
 
 		public Vector2 GetDrawPosition() {
 			return new Vector2(0, 0);
 		}
 
-		public void Draw(SpriteBatch batch) {
-
+		public virtual void Draw() {
+			//spriteBatch.DrawString(Fonts.GameFont, " ", GetDrawPosition() + new Vector2(0, -20), Color.White);
 		}
-	}
-
-	public interface IEntityCollidable
-	{
-		void OnEntityCollide(Vector2 sep, Vector2 normal, Entity victim);
-	}
-
-	public class Barrel : Entity
-	{
-
 	}
 }

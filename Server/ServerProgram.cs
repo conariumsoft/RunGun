@@ -6,7 +6,7 @@ using System.Net;
 
 namespace RunGun.Server
 {
-	class Program
+	class ServerProgram
 	{
 		static void CreateServerFiles() {
 			// create directories if they do not yet exist.
@@ -34,9 +34,9 @@ namespace RunGun.Server
 			int exitCode = server.Run();
 			if (exitCode != 0) {
 				// TODO: make it yell about error?
-				Logging.Out("Starting ran fine.");
+				//Logging.Out("Starting ran fine.");
 			} else {
-				Logging.Out("Server probably crashed.");
+				//Logging.Out("Server probably crashed.");
 			}
 		}
 	}

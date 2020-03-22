@@ -15,7 +15,7 @@ namespace RunGun.Core.Networking
 		KICK, // 
 		USER_JOINED, //
 		USER_LEFT, // string reason
-		CHAT_MSG, // 
+		CHAT_RELAY, // 
 		SEND_MAP_DATA,
 		EXISTING_USER, // send current connections to new clients
 		PLAYER_POS,
@@ -26,14 +26,14 @@ namespace RunGun.Core.Networking
 		DEL_ENTITY, // int EntityID
 		ENTITY_POS, // short EntityID, x, y, nextX, nextY, velX, velY
 		GAME_STATE, // uint physicsStep, (short entityID, float x, y, nextX, nextY, velX, velY) X entityAmount
+		SEND_STRING
 	}
-
 	// commands sent from the client
 	public enum ClientCommand : byte
 	{
 		CONNECT, // string nickname
 		DISCONNECT,
-		SAY, // string chatMessage
+		CHAT_SAY, // string chatMessage
 		MOVE_LEFT,
 		GET_ONLINE_PLAYERS,
 		MOVE_RIGHT, // 1b
@@ -50,6 +50,6 @@ namespace RunGun.Core.Networking
 		GET_SERVER_NAME,
 		PING,
 		PING_REPLY,
+		SEND_STRING,
 	}
-
 }

@@ -1,7 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using RunGun.Core;
 using RunGun.Core.Networking;
-using RunGun.Core.Physics;
 using RunGun.Server.Networking;
 using System;
 using System.Collections.Generic;
@@ -44,11 +43,11 @@ namespace RunGun.Server
 	// TODO: make server occasionally talk shit in chat
 	class Server {
 		bool isRunning = true;
-		double delta = 0;
+		float delta = 0;
 		double networkRelayClock = 0;
 		int iterator = 0;
 
-		UdpThread udpThread;
+		UdpListener udpListener;
 		List<User> connectedUsers;
 		GameWorld world;
 
@@ -60,15 +59,16 @@ namespace RunGun.Server
 			PluginManager.CallOnPluginLoad();
 
 			Logging.Out("Starting UDP Listener Thread...");
-			udpThread = new UdpThread(endpoint);
+			udpListener = new UdpListener(endpoint);
 
 			Logging.Out("Initializing gameworld...");
 			world = new GameWorld();
 			connectedUsers = new List<User>();
 
 			world.levelGeometries = new List<LevelGeometry>() {
-				new LevelGeometry(new Vector2(0, 10), new Vector2(20, 400), new Color(1.0f, 0.0f, 0.0f)),
-				new LevelGeometry(new Vector2(10, 420), new Vector2(800, 40), new Color(0.0f, 1.0f, 1.0f))
+				new LevelGeometry(new Vector2(0, 20), new Vector2(20, 600), new Color(255, 0, 0)),
+				new LevelGeometry(new Vector2(10, 500), new Vector2(1000, 40), new Color(0, 255, 128)),
+				new LevelGeometry(new Vector2(400, 400), new Vector2(20, 50), new Color(128, 0, 128)),
 			};
 		}
 
@@ -124,7 +124,7 @@ namespace RunGun.Server
 			//! if using non-ascii characters, need to change to UTF-8. (i.e regions with non-latin alphabets)
 			var msg = Encoding.ASCII.GetBytes(message);
 			var b = new byte[msg.Length+1];
-			b[0] = (byte)ServerCommand.CHAT_MSG;
+			b[0] = (byte)ServerCommand.CHAT_RELAY;
 
 			Array.Copy(msg, 0, b, 1, msg.Length);
 			return b;
@@ -134,13 +134,16 @@ namespace RunGun.Server
 			//int x, int y, int width, int height, byte r, byte g, byte b;
 			byte[] bx = BitConverter.GetBytes((short)gm.Position.X); // conversion to short to save space.
 			byte[] by = BitConverter.GetBytes((short)gm.Position.Y); // 2 bytes for short, 4 bytes for int
-			byte[] bw = BitConverter.GetBytes((short)gm.size.X); // you do the math, jackass.
-			byte[] bh = BitConverter.GetBytes((short)gm.size.Y);
+			byte[] bw = BitConverter.GetBytes((short)gm.Size.X); // you do the math, jackass.
+			byte[] bh = BitConverter.GetBytes((short)gm.Size.Y);
+			byte r = gm.Color.R;
+			byte g = gm.Color.G;
+			byte b = gm.Color.B;
 
 			return new byte[] { (byte)ServerCommand.SEND_MAP_DATA,
 				bx[0], bx[1], by[0], by[1],
 				bw[0], bw[1], bh[0], bh[1],
-				gm.color.R, gm.color.G, gm.color.B
+				r, g, b
 			};
 		}
 		public static byte[] P_ExistingUser() {
@@ -203,6 +206,15 @@ namespace RunGun.Server
 				vyb[0], vyb[1], vyb[2], vyb[3]
 			};
 		}
+
+		public static byte[] P_SendString(string message) {
+			var msg = Encoding.ASCII.GetBytes(message);
+			var b = new byte[msg.Length + 1];
+			b[0] = (byte)ServerCommand.SEND_STRING;
+
+			Array.Copy(msg, 0, b, 1, msg.Length);
+			return b;
+		}
 		#endregion
 
 		#region Client_Packet_Decoding_Methods
@@ -220,7 +232,7 @@ namespace RunGun.Server
 
 		void HandleSay(User user, byte[] packet) {
 			// TODO: Sanitize string?
-			string message = BitConverter.ToString(packet);
+			string message = Encoding.ASCII.GetString(packet);
 			GlobalMessage(user.Nickname + " : "+message, ConsoleColor.White);
 		}
 		void HandlePong(User user, byte[] packet) {
@@ -284,11 +296,11 @@ namespace RunGun.Server
 		}
 
 		public string GetServerIP() {
-			return udpThread.GetServerIP();
+			return udpListener.GetServerIP();
 		}
 
 		public int GetServerPort() {
-			return udpThread.GetServerPort();
+			return udpListener.GetServerPort();
 		}
 
 		void HandlePing(NetworkPeer peer, byte[] packet) {
@@ -343,7 +355,7 @@ namespace RunGun.Server
 					case ClientCommand.DISCONNECT:
 						HandleDisconnect(user, packet);
 						break;
-					case ClientCommand.SAY:
+					case ClientCommand.CHAT_SAY:
 						HandleSay(user, packet);
 						break;
 					case ClientCommand.PING:
@@ -411,8 +423,8 @@ namespace RunGun.Server
 		}
 
 		private void ReadPacketQueue() {
-			for (int i = 0; i < udpThread.GetCount(); i++) {
-				DecodePacket(udpThread.Read());
+			for (int i = 0; i < udpListener.GetCount(); i++) {
+				DecodePacket(udpListener.Read());
 			}
 		}
 
@@ -453,18 +465,18 @@ namespace RunGun.Server
 		#region Message_Sendout_Methods
 		public void SendToAll(byte[] packet) {
 			foreach (var user in connectedUsers) {
-				udpThread.Broadcast(user.IPAddress, packet);
+				udpListener.Broadcast(user.IPAddress, packet);
 			}
 		}
 		public void SendToAllExcept(User exception, byte[] packet) {
 			foreach (var user in connectedUsers) {
 				if (user != exception) {
-					udpThread.Broadcast(user.IPAddress, packet);
+					udpListener.Broadcast(user.IPAddress, packet);
 				}
 			}
 		}
 		public void Send(IPEndPoint endpoint, byte[] packet) {
-			udpThread.Broadcast(endpoint, packet);
+			udpListener.Broadcast(endpoint, packet);
 		}
 		public void Send(NetworkPeer peer, byte[] packet) {
 			Send(peer.IPAddress, packet);
@@ -509,29 +521,15 @@ namespace RunGun.Server
 			}
 		}
 
-		void Update(double dt) {
+		void Update(float dt) {
 			ReadPacketQueue();
 			UpdateNetRelay(dt);
-
-			world.Update(delta);
-
-
-			foreach(Entity e in world.entities) {
-				if (e is Player p) {
-
-					if (p.bulletTimer > 1 && p.shooting) {
-						p.bulletTimer = 0;
-						world.AddEntity(new Bullet(p) {
-
-						});
-					}
-				}
-			}
-
+			world.Update(dt);
+			world.ServerUpdate(dt);
 			UpdateKeepAlive(dt);
 		}
 		public int Run() {
-			udpThread.Start();
+			udpListener.Start();
 
 			Stopwatch stopwatch = new Stopwatch();
 			
@@ -539,9 +537,9 @@ namespace RunGun.Server
 				stopwatch = Stopwatch.StartNew();
 				Update(delta);
 				Thread.Sleep(8);
-				delta = (stopwatch.Elapsed.TotalSeconds);
+				delta = (float)stopwatch.Elapsed.TotalSeconds;
 			}
-			udpThread.Stop();
+			udpListener.Stop();
 			stopwatch.Stop();
 			return 0;
 		}

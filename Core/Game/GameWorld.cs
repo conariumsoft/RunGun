@@ -9,7 +9,7 @@ using System.Text;
 
 namespace RunGun.Core
 {
-	class GameWorld
+	class GameWorld : IDrawableRG, IUpdateableRG
 	{
 		public List<LevelGeometry> levelGeometries;
 		public List<Entity> entities;
@@ -78,18 +78,34 @@ namespace RunGun.Core
 				ProcessEntityPhysics(entity, step);
 			}
 		}
-		public void Update(double delta) {
+		public void Update(float delta) {
 
 			foreach (var entity in entities) {
 				entity.Update(delta);
 			}
 
-			physicsClock += (float)delta;
+			physicsClock += delta;
 
 			while (physicsClock >= PhysicsProperties.PHYSICS_TIMESTEP) {
 				physicsClock -= PhysicsProperties.PHYSICS_TIMESTEP;
 				Physics(PhysicsProperties.PHYSICS_TIMESTEP);
 			}
+		}
+
+		public void ServerUpdate(float delta) {
+			foreach (var entity in entities) {
+				entity.ServerUpdate(delta);
+			}
+		}
+
+		public void ClientUpdate(float delta) {
+			foreach (var entity in entities) {
+				entity.ClientUpdate(delta);
+			}
+		}
+
+		public void Draw() {
+			
 		}
 	}
 }

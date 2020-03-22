@@ -69,15 +69,6 @@ namespace RunGun.Server
 		}
 	}
 
-	struct LuaCallback<T>
-	{
-		LuaFunction luaFunction;
-
-		public void callback(T data) {
-			luaFunction?.Call(data);
-		}
-	}
-
 	class Plugin
 	{
 		string rootFolder;

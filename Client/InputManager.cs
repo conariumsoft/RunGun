@@ -57,7 +57,7 @@ namespace RunGun.Client
         public bool IsUserLookingUp() { return lookingUp; }
         public bool IsUserLookingDown() { return lookingDown; }
 
-        private void UpdateKeyboard(double dt) {
+        private void UpdateKeyboard(float dt) {
             var kbState = Keyboard.GetState();
 
             bool newMovingLeft = kbState.IsKeyDown(moveLeftKey);
@@ -93,12 +93,12 @@ namespace RunGun.Client
             }
         }
 
-        private void UpdateTouch(double dt) {
+        private void UpdateTouch(float dt) {
 
            
         }
 
-        private void UpdateController(double dt) {
+        private void UpdateController(float dt) {
             var gamepad = GamePad.GetState(PlayerIndex.One);
 
             var dpad = gamepad.DPad;
@@ -125,7 +125,7 @@ namespace RunGun.Client
                 shooting = true;
         }
 
-        public void Update(double dt) {
+        public void Update(float dt) {
 
             switch(inputMode) {
                 case InputMode.KEYBOARD:

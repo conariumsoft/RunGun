@@ -1,21 +1,19 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
-using RunGun.Client.Misc;
 using RunGun.Client.Networking;
 using RunGun.Core;
 using RunGun.Core.Game;
 using RunGun.Core.Networking;
 using RunGun.Core.Physics;
+using RunGun.Core.Rendering;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Text;
 
 namespace RunGun.Client
 {
-
 	struct InputState {
 		public bool jump;
 		public bool left;
@@ -23,46 +21,160 @@ namespace RunGun.Client
 		public bool shoot;
 	}
 
+	public static class GlobalDevices
+	{
+		public static GraphicsDeviceManager GraphicsDeviceManager;
+		public static SpriteBatch SpriteBatch;
+		public static GraphicsDevice GraphicsDevice;
+		public static BasicEffect BasicEffect;
+		public static ContentManager ContentManager;
+
+#nullable enable
+		public static GraphicsDeviceManager? GetGraphicsDeviceManager() {
+			return GraphicsDeviceManager;
+		}
+
+		public static SpriteBatch? GetSpriteBatch() {
+			return SpriteBatch;
+		}
+
+		public static GraphicsDevice? GetGraphicsDevice() {
+			return GraphicsDevice;
+		}
+
+		public static ContentManager? GetContentManager() {
+			return ContentManager;
+		}
+#nullable restore
+	}
+
 	public class ClientMain : Game
 	{
-		public short ourPID;
-
-		public static SpriteFont font;
-
-		ClientArchitecture client;
-
+		CNetworkLayer client;
 		InputManager inputManager;
-
-		GraphicsDeviceManager graphics;
-		SpriteBatch spriteBatch;
+		public BaseChatSystem chat;
+		GameWorld world;
+		Disk<InputState> inputHistory = new Disk<InputState>(1000);
+		FrameCounter frameCounter;
+		public short ourPID; // our player ID
 		float pingClock = 0;
 		float keepAlive = 0;
 		float ping;
+		bool connected = false; // if client is connected
 		Matrix screenTransform;
-		
-		Texture2D rectTexture;
-
-		bool connected = false;
-
 		Vector2 textpos = new Vector2(4, 4);
 
-		ChatSystem chat;
-		GameWorld world;
+		public ClientMain(string nickname, string ipaddress, string port)
+		{
+			GlobalDevices.GraphicsDeviceManager = new GraphicsDeviceManager(this) {
+				PreferredBackBufferWidth = 1024,
+				PreferredBackBufferHeight = 640,
+				SynchronizeWithVerticalRetrace = false,
+				IsFullScreen = false,
+				PreferMultiSampling = false,
+			};
+			
+			Content.RootDirectory = "Content";
 
-		// TODO: play around and figure out nessecary buffer size (current = 1000)
-		Disk<InputState> inputHistory = new Disk<InputState>(1000);
+			world = new GameWorld();
+			client = new CNetworkLayer();
+			frameCounter = new FrameCounter();
 
-		FrameCounter frameCounter;
+			DetermineInputMode();
+			ConnectInputCallbacks();
+			ConnectPacketCallbacks();
+
+			world.OnPhysicsStep += PhysicsCallback;
+
+			screenTransform = Matrix.CreateScale(1);
+			client.Connect(ipaddress, int.Parse(port), nickname); // TODO: wrap in try-catch, and make it retry..
+		}
+
+		#region Initialization_Methods
+		private void DetermineInputMode() {
+			bool isController = GamePadState.Default.IsConnected;
+			bool isTouch = TouchPanel.GetCapabilities().IsConnected;
+
+			if (isController) {
+				inputManager = new InputManager(InputMode.CONTROLLER);
+				Console.WriteLine("Started game in Controller mode");
+			} else if (isTouch) {
+				inputManager = new InputManager(InputMode.TOUCH);
+				Console.WriteLine("Started game in Touch mode");
+			} else {
+				inputManager = new InputManager(InputMode.KEYBOARD);
+				Console.WriteLine("Started game in Keyboard mode");
+			}
+		}
+
+		private void ConnectInputCallbacks() {
+			inputManager.OnStartJump += OnPlayerStartJump;
+			inputManager.OnStopJump += OnPlayerStopJump;
+			inputManager.OnStartMoveLeft += OnPlayerStartMoveLeft;
+			inputManager.OnStopMoveLeft += OnPlayerStopMoveLeft;
+			inputManager.OnStartMoveRight += OnPlayerStartMoveRight;
+			inputManager.OnStopMoveRight += OnPlayerStopMoveRight;
+			inputManager.OnStartShoot += OnPlayerStartShoot;
+			inputManager.OnStopShoot += OnPlayerStopShoot;
+			inputManager.OnStartLookUp += OnPlayerStartLookUp;
+			inputManager.OnStopLookUp += OnPlayerStopLookUp;
+			inputManager.OnStartLookDown += OnPlayerStartLookDown;
+			inputManager.OnStopLookDown += OnPlayerStopLookDown;
+
+		}
+		private void ConnectPacketCallbacks() {
+			client.OnAddEntity += OnAddEntity;
+			client.OnDeleteEntity += OnDeleteEntity;
+			client.OnGetLocalPlayerID += OnGetLocalPlayerID;
+			client.OnConnectAccept += OnConnectionAccepted;
+			client.OnConnectDenied += OnConnectionDenied;
+			client.OnEntityPosition += OnEntityPosition;
+			client.OnPingReply += OnPingReply;
+			client.OnReceiveMapData += OnReceiveMapData;
+			client.OnChatMessage += OnChatMessage;
+			client.OnPing += OnPing;
+		}
+
+		#endregion
+
+		protected override void Initialize() {
+			base.Initialize();
+			Window.AllowUserResizing = true;
+			Window.AllowAltF4 = true;
+			Window.Title = "RunGun Client";
+			IsFixedTimeStep = false;
+		}
+
+		protected override void LoadContent() {
+			// ALWAYS define these before initializing ANYTHING
+			GlobalDevices.ContentManager = Content;
+			GlobalDevices.SpriteBatch = new SpriteBatch(GraphicsDevice);
+			GlobalDevices.GraphicsDevice = GraphicsDevice;
+
+			ShapeRenderer.Initialize(GlobalDevices.GetGraphicsDevice(), GlobalDevices.GetSpriteBatch());
+			TextRenderer.Initialize(GlobalDevices.GetSpriteBatch(), GlobalDevices.GetContentManager());
+		}
+
+		protected override void UnloadContent() {
+			client.Send(P_Disconnect());
+		}
+
 
 		#region Packet_Creation_Methods
 		private static byte[] P_Disconnect() {
-			return new byte[] {(byte)ClientCommand.DISCONNECT};
+			return new byte[] { (byte)ClientCommand.DISCONNECT };
+		}
+		private static byte[] P_Say(string message) {
+			//! if using non-ascii characters, need to change to UTF-8. (i.e regions with non-latin alphabets)
+			var msg = Encoding.ASCII.GetBytes(message);
+			var b = new byte[msg.Length + 1];
+			b[0] = (byte)ClientCommand.CHAT_SAY;
+
+			Array.Copy(msg, 0, b, 1, msg.Length);
+			return b;
 		}
 		#endregion
 
-		Player GetLocalPlayer() {
-			return (Player)world.GetEntity(ourPID);
-		}
 
 		#region Received_Packet_Callbacks
 		void OnChatMessage(string message) {
@@ -83,7 +195,7 @@ namespace RunGun.Client
 		}
 
 		void OnReceiveMapData(Vector2 pos, Vector2 size, Color color) {
-			world.levelGeometries.Add(new CLevelGeometry(GraphicsDevice, pos, size, color));
+			world.levelGeometries.Add(new LevelGeometry(pos, size, color));
 		}
 
 		void OnPingReply() {
@@ -129,8 +241,8 @@ namespace RunGun.Client
 		}
 
 		// when player sends chat message
-		void OnPlayerSendChat(string message) {
-			//client.Send(ClientCommand.SAY, message);
+		public void OnPlayerSendChat(string message) {
+			client.Send(P_Say(message));
 		}
 		#endregion
 		// these are all input callbacks, used to tell server about input changes.
@@ -138,121 +250,21 @@ namespace RunGun.Client
 			return new byte[] { (byte)command };
 		}
 
-		void OnPlayerStartJump()      { client.Send(C(ClientCommand.MOVE_JUMP)); }
-		void OnPlayerStopJump()       { client.Send(C(ClientCommand.MOVE_STOP_JUMP)); }
-		void OnPlayerStartMoveLeft()  { client.Send(C(ClientCommand.MOVE_LEFT)); }
-		void OnPlayerStopMoveLeft()   { client.Send(C(ClientCommand.MOVE_STOP_LEFT)); }
+		#region Input_Senders
+		void OnPlayerStartJump() { client.Send(C(ClientCommand.MOVE_JUMP)); }
+		void OnPlayerStopJump() { client.Send(C(ClientCommand.MOVE_STOP_JUMP)); }
+		void OnPlayerStartMoveLeft() { client.Send(C(ClientCommand.MOVE_LEFT)); }
+		void OnPlayerStopMoveLeft() { client.Send(C(ClientCommand.MOVE_STOP_LEFT)); }
 		void OnPlayerStartMoveRight() { client.Send(C(ClientCommand.MOVE_RIGHT)); }
-		void OnPlayerStopMoveRight()  { client.Send(C(ClientCommand.MOVE_STOP_RIGHT)); }
-		void OnPlayerStartLookDown()  { client.Send(C(ClientCommand.LOOK_DOWN)); }
-		void OnPlayerStopLookDown()   { client.Send(C(ClientCommand.STOP_LOOK_DOWN)); }
-		void OnPlayerStartLookUp()    { client.Send(C(ClientCommand.LOOK_UP)); }
-		void OnPlayerStopLookUp()     { client.Send(C(ClientCommand.STOP_LOOK_UP)); }
-		void OnPlayerStartShoot()     { client.Send(C(ClientCommand.SHOOT)); }
-		void OnPlayerStopShoot()      { client.Send(C(ClientCommand.STOP_SHOOT)); }
+		void OnPlayerStopMoveRight() { client.Send(C(ClientCommand.MOVE_STOP_RIGHT)); }
+		void OnPlayerStartLookDown() { client.Send(C(ClientCommand.LOOK_DOWN)); }
+		void OnPlayerStopLookDown() { client.Send(C(ClientCommand.STOP_LOOK_DOWN)); }
+		void OnPlayerStartLookUp() { client.Send(C(ClientCommand.LOOK_UP)); }
+		void OnPlayerStopLookUp() { client.Send(C(ClientCommand.STOP_LOOK_UP)); }
+		void OnPlayerStartShoot() { client.Send(C(ClientCommand.SHOOT)); }
+		void OnPlayerStopShoot() { client.Send(C(ClientCommand.STOP_SHOOT)); }
+		#endregion
 
-		
-		private void ConnectInputCallbacks() {
-			inputManager.OnStartJump += OnPlayerStartJump;
-			inputManager.OnStopJump += OnPlayerStopJump;
-			inputManager.OnStartMoveLeft += OnPlayerStartMoveLeft;
-			inputManager.OnStopMoveLeft += OnPlayerStopMoveLeft;
-			inputManager.OnStartMoveRight += OnPlayerStartMoveRight;
-			inputManager.OnStopMoveRight += OnPlayerStopMoveRight;
-			inputManager.OnStartShoot += OnPlayerStartShoot;
-			inputManager.OnStopShoot += OnPlayerStopShoot;
-			inputManager.OnStartLookUp += OnPlayerStartLookUp;
-			inputManager.OnStopLookUp += OnPlayerStopLookUp;
-			inputManager.OnStartLookDown += OnPlayerStartLookDown;
-			inputManager.OnStopLookDown += OnPlayerStopLookDown;
-			
-		}
-		private void ConnectPacketCallbacks() {
-			client.OnAddEntity += OnAddEntity;
-			client.OnDeleteEntity += OnDeleteEntity;
-			client.OnGetLocalPlayerID += OnGetLocalPlayerID;
-			client.OnConnectAccept += OnConnectionAccepted;
-			client.OnConnectDenied += OnConnectionDenied;
-			client.OnEntityPosition += OnEntityPosition;
-			client.OnPingReply += OnPingReply;
-			client.OnReceiveMapData += OnReceiveMapData;
-			client.OnChatMessage += OnChatMessage;
-			client.OnPing += OnPing;
-		}
-
-		public ClientMain(string nickname, string ipaddress, string port)
-		{
-			// init graphics
-			graphics = new GraphicsDeviceManager(this) {
-				PreferredBackBufferWidth = 1024,
-				PreferredBackBufferHeight = 640,
-				SynchronizeWithVerticalRetrace = false,
-				IsFullScreen = false,
-			};
-			Content.RootDirectory = "Content";
-
-			// determine which input scheme to use
-			bool isController = GamePadState.Default.IsConnected;
-			bool isTouch = TouchPanel.GetCapabilities().IsConnected;
-
-			if (isController) {
-				inputManager = new InputManager(InputMode.CONTROLLER);
-				Console.WriteLine("Started game in Controller mode");
-			} else if (isTouch) {
-				inputManager = new InputManager(InputMode.TOUCH);
-				Console.WriteLine("Started game in Touch mode");
-			} else {
-				inputManager = new InputManager(InputMode.KEYBOARD);
-				Console.WriteLine("Started game in Keyboard mode");
-			}
-
-			ConnectInputCallbacks();
-
-			// initialize gameworld
-			world = new GameWorld();
-			world.OnPhysicsStep += PhysicsCallback;
-
-			// create misc stuff
-			chat = new ChatSystem(OnPlayerSendChat);
-			frameCounter = new FrameCounter();
-			screenTransform = Matrix.CreateScale(1);
-
-			// finally, create UDP client system, and try connecting
-			client = new ClientArchitecture();
-			ConnectPacketCallbacks();
-			client.Connect(ipaddress, int.Parse(port), nickname); // TODO: wrap in try-catch, and make it retry..
-		}
-
-		protected override void Initialize() {
-			base.Initialize();
-
-			//Window.TextInput += chat.OnTextInput;
-
-			Window.AllowUserResizing = true;
-			Window.AllowAltF4 = true;
-			Window.Title = "RunGun Client";
-
-			IsFixedTimeStep = false;
-
-			Color[] data = new Color[32*32];
-
-			rectTexture = new Texture2D(GraphicsDevice, 32, 32);
-
-			for (int i = 0; i < data.Length; ++i) {
-				data[i] = Color.White;
-			}
-
-			rectTexture.SetData(data);
-		}
-
-		protected override void LoadContent() {
-			spriteBatch = new SpriteBatch(GraphicsDevice);
-			font = this.Content.Load<SpriteFont>("Font");
-		}
-
-		protected override void UnloadContent() {
-			client.Send(P_Disconnect());
-		}
 
 		// TODO: refactor this into core
 		void PhysicsCallback(float step, int iterator) {
@@ -289,6 +301,7 @@ namespace RunGun.Client
 				return;
 
 			world.Update(dt);
+			world.ClientUpdate(dt);
 
 			pingClock += dt;
 			keepAlive += dt;
@@ -305,6 +318,7 @@ namespace RunGun.Client
 			}
 
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape)) {
+				client.Send(P_Disconnect());
 				Exit();
 			}
 
@@ -314,31 +328,26 @@ namespace RunGun.Client
 		protected override void Draw(GameTime gameTime)
 		{
 			GraphicsDevice.Clear(Color.Black);
+			SpriteBatch spriteBatch = GlobalDevices.GetSpriteBatch();
 			spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, screenTransform);
 			//-------------------------------------------------------------------------------------------------------------
 
-			foreach (CLevelGeometry geom in world.levelGeometries) {
-				geom.Draw(spriteBatch);
-			}
 
-			foreach (var entity in world.entities) {
-				if (entity is Player p) {
+			foreach (LevelGeometry geom in world.levelGeometries)
+				geom.Draw();
+			
 
-					spriteBatch.Draw(rectTexture, p.GetDrawPosition(), p.color);
-
-					string entityData = p.UserNickname;
-					
-					spriteBatch.DrawString(font, entityData, p.GetDrawPosition() + new Vector2(0, -20), Color.White);
-				}
-			}
+			foreach (var entity in world.entities)
+				entity.Draw();
+			
 
 			double averageFPS = frameCounter.GetAverageFramerate();
 
 			string debugdata = String.Format("fps: {0} ping: {1}ms ent: {2}", Math.Floor(averageFPS), Math.Floor(ping * 1000), world.entities.Count);
 
-			spriteBatch.DrawString(font, debugdata, textpos, Color.White);
+			TextRenderer.Print(Color.White, debugdata, textpos);
 
-			chat.Draw(spriteBatch);
+			chat.Draw();
 
 			//-------------------------------------------------------------------------------------------------------------
 			spriteBatch.End();

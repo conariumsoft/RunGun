@@ -10,12 +10,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)ChatSystem.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)CLevelGeometry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ClientMain.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FrameCounter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)InputManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)KeyListener.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\Networking.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\CNetworkLayer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PacketDecoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\UdpUser.cs" />
   </ItemGroup>
@@ -27,5 +26,8 @@
     <None Include="$(MSBuildThisFileDirectory)Content\Font.spritefont">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Rendering\" />
   </ItemGroup>
 </Project>

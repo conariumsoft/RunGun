@@ -1,7 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace RunGun.Core.Game
 {
@@ -12,12 +10,17 @@ namespace RunGun.Core.Game
 	class Bullet : Entity, IEntityCollidable
 	{
 		Entity bulletCreator;
-		BulletDirection direction;
-		public Bullet(Entity creator) : base() {
+		float bulletSpeed = 200; //pixel/second?
+
+		public Bullet(Entity creator, Vector2 origin, Vector2 direction) : base() {
 			bulletCreator = creator;
+
+			Position = origin;
+			NextPosition = origin;
+			Velocity = direction * bulletSpeed;
 		}
 
-		public override void Update(double delta) {
+		public override void Update(float delta) {
 			base.Update(delta);
 		}
 
@@ -29,7 +32,6 @@ namespace RunGun.Core.Game
 		public override void Physics(float step) {
 			//base.Physics(step);
 			// TODO: implement bullet penetration
-			// override base physics, we don't 
 			Position = NextPosition;
 			NextPosition = Velocity * step;
 		}
@@ -38,6 +40,10 @@ namespace RunGun.Core.Game
 			if (!victim.Equals(bulletCreator)) {
 				dead = true;
 			}
+		}
+
+		public override void Draw() {
+			base.Draw();
 		}
 	}
 }

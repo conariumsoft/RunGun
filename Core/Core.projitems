@@ -10,23 +10,26 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Collections.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Converter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Bullet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\GameWorld.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Game\Shit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Weapons.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Rendering\ShapeRenderer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Rendering\TextRenderer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utility\StringUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utility\Crypto.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Entity.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Utility\EventHook.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\LevelGeometry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Networking.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\UdpBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Physics\CollisionSolver.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Physics\CommonPhysics.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Physics\PhysicsProperties.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)license.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)ClassDiagram1.cd" />
   </ItemGroup>
 </Project>
