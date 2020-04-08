@@ -9,10 +9,10 @@ using System.Text;
 
 namespace RunGun.Core
 {
-	class GameWorld : IDrawableRG, IUpdateableRG
+	public class GameWorld : IUpdateableRG
 	{
 		public List<LevelGeometry> levelGeometries;
-		public List<Entity> entities;
+		public List<IEntity> entities;
 
 		public event Action<float, int> OnPhysicsStep;
 
@@ -24,13 +24,13 @@ namespace RunGun.Core
 			physicsFrameIter = 0;
 
 			levelGeometries = new List<LevelGeometry>();
-			entities = new List<Entity>();
+			entities = new List<IEntity>();
 		}
 
-		public void AddEntity(Entity e) {
+		public void AddEntity(IEntity e) {
 			entities.Add(e);
 		}
-		public void RemoveEntity(Entity e) {
+		public void RemoveEntity(IEntity e) {
 			entities.Remove(e);
 		}
 		public void RemoveEntity(short entityID) {
@@ -48,7 +48,7 @@ namespace RunGun.Core
 			}
 			return false;
 		}
-		public Entity GetEntity(short entityID) {
+		public IEntity GetEntity(short entityID) {
 			foreach (var entity in entities) {
 				if (entity.EntityID == entityID) {
 					return entity;
@@ -56,17 +56,27 @@ namespace RunGun.Core
 			}
 			throw new Exception("No entity with ID "+ entityID + " found!");
 		}
-		public void ProcessEntityPhysics(Entity e, float step) {
+		public List<IEntity> GetEntities() {
+			return entities;
+		}
+		public void ProcessEntityPhysics(IPhysical entity, float step) {
 			
-			e.IsFalling = true;
-			foreach (var geom in levelGeometries) {
-				CollisionSolver.SolveEntityAgainstGeometry(e, geom);
+			entity.IsFalling = true;
+
+			if (entity is ICollidable collidableEntity) {
+				for (int index = 0; index < levelGeometries.Count; index++) {
+					LevelGeometry geom = levelGeometries[index];
+					CollisionSolver.SolveEntityAgainstGeometry(collidableEntity, geom);
+				}
 			}
-			e.Physics(step);
 
-			if (e is IEntityCollidable ec) {
-				foreach (var otherEnt in entities) {
+			entity.Physics(step);
 
+			if (entity is IEntityCollidable ec) {
+				for (int index = 0; index < entities.Count; index++) {
+					ICollidable otherEntity = entities[index] as ICollidable;
+					if (!ec.Equals(otherEntity))
+						CollisionSolver.SolveEntityAgainstEntity(ec, otherEntity);
 				}
 			} 
 		}
@@ -74,33 +84,48 @@ namespace RunGun.Core
 			physicsFrameIter++;
 
 			OnPhysicsStep?.Invoke(step, physicsFrameIter);
-			foreach (var entity in entities) {
-				ProcessEntityPhysics(entity, step);
+			for (int index = 0; index < entities.Count; index++) {
+				IEntity entity = entities[index];
+
+				if (entity is IPhysical physicalEntity)
+					ProcessEntityPhysics(physicalEntity, step);
 			}
 		}
 		public void Update(float delta) {
-
-			foreach (var entity in entities) {
-				entity.Update(delta);
-			}
+			// NOTE: use numeric for loops inside performance critical code
+			// also consider using arrays instead of lists
+			// apparently there's quite a performance difference
 
 			physicsClock += delta;
 
-			while (physicsClock >= PhysicsProperties.PHYSICS_TIMESTEP) {
+			if (physicsClock >= PhysicsProperties.PHYSICS_TIMESTEP) {
 				physicsClock -= PhysicsProperties.PHYSICS_TIMESTEP;
 				Physics(PhysicsProperties.PHYSICS_TIMESTEP);
 			}
-		}
 
-		public void ServerUpdate(float delta) {
-			foreach (var entity in entities) {
-				entity.ServerUpdate(delta);
+			for (int index = 0; index < entities.Count; index++) {
+				IEntity entity = entities[index];
+				entity.Update(delta);
 			}
 		}
 
-		public void ClientUpdate(float delta) {
-			foreach (var entity in entities) {
-				entity.ClientUpdate(delta);
+		public void ServerUpdate(IGameController gc, float delta) {
+			for (int index = 0; index < entities.Count; index++) {
+				IEntity entity = entities[index];
+
+				entity.ServerSideUpdate(gc, delta);
+				if (entity.Remove == true) {
+					gc.RemoveEntity(entity.EntityID);
+					entities.RemoveAt(index);
+					
+				}
+			}
+		}
+
+		public void ClientUpdate(IGameController gc, float delta) {
+			for (int index = 0; index < entities.Count; index++) {
+				IEntity entity = entities[index];
+				entity.ClientSideUpdate(gc, delta);
 			}
 		}
 

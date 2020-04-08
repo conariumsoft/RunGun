@@ -8,30 +8,25 @@ namespace RunGun.Core.Physics
 {
 	public static class CollisionSolver
 	{
-
-		public static void SolveEntityAgainstGeometry(Entity e, LevelGeometry geom) {
-			bool result = CheckAABB(e.NextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
-
+		public static void SolveEntityAgainstGeometry(ICollidable e, LevelGeometry geom) {
+			bool result = CheckAABB(e.NextPosition, e.BoundingBox, geom.GetCenter(), geom.GetDimensions());
 			if (result) {
-				var separation = GetSeparationAABB(e.NextPosition, e.boundingBox, geom.GetCenter(), geom.GetDimensions());
+				var separation = GetSeparationAABB(e.NextPosition, e.BoundingBox, geom.GetCenter(), geom.GetDimensions());
 				var normal = GetNormalAABB(separation, e.Velocity);
-
 				e.NextPosition += separation;
 				e.OnCollide(separation, normal);
 			}
 		}
 
-		public static void SolveEntityAgainstEntity(Entity colliding, Entity stays) {
-			bool result = CheckAABB(colliding.NextPosition, colliding.boundingBox, stays.NextPosition, stays.boundingBox);
+		public static void SolveEntityAgainstEntity(IEntityCollidable colliding, ICollidable stays) {
+			bool result = CheckAABB(colliding.NextPosition, colliding.BoundingBox, stays.NextPosition, stays.BoundingBox);
 
 			if (result) {
-				var separation = GetSeparationAABB(colliding.NextPosition, colliding.boundingBox, stays.NextPosition, stays.boundingBox);
+				var separation = GetSeparationAABB(colliding.NextPosition, colliding.BoundingBox, stays.NextPosition, stays.BoundingBox);
 				var normal = GetNormalAABB(separation, colliding.Velocity);
 
-				if (colliding is IEntityCollidable ie) {
-					//e.nextPosition += separation;
-					ie.OnEntityCollide(separation, normal, stays);
-				}
+				//e.nextPosition += separation;
+				colliding.OnEntityCollide(separation, normal, stays);
 			}
 		}
 

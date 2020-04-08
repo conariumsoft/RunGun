@@ -1,8 +1,0 @@
-﻿RunGun. If this project is open-sourced, use WTFPL. http://www.wtfpl.net/wp-content/uploads/2012/12/wtfpl-strip.jpg
-
-Created by Conarium Software.
-
-Joshuu O'Leary - Server Tech, Lead Programmer.
-squidthonk - Programmer.
-Nate Hayes - Game Designer.
-bumpy - Artist, Entomologist.

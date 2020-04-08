@@ -1,6 +1,4 @@
-﻿using Microsoft.Xna.Framework;
-using NLua;
-using RunGun.Core;
+﻿using RunGun.Core.Utility;
 using RunGun.Server.Utils;
 using System.Net;
 
@@ -8,11 +6,7 @@ namespace RunGun.Server
 {
 	class ServerProgram
 	{
-		static void CreateServerFiles() {
-			// create directories if they do not yet exist.
-			System.IO.Directory.CreateDirectory("plugins");
-			System.IO.Directory.CreateDirectory("logs");
-
+		static void CreateDefaultConfiguration() {
 			// copy serverconf to folder if doesn't exist yet.
 			if (!System.IO.File.Exists("serverconf.lua")) {
 				var sw = System.IO.File.CreateText("serverconf.lua");
@@ -22,22 +16,30 @@ namespace RunGun.Server
 				sw.Close();
 			}
 		}
-
+		static void CreatePluginFolder() {
+			System.IO.Directory.CreateDirectory("plugins");
+		}
+		static void CreateLogsFolder() {
+			System.IO.Directory.CreateDirectory("logs");
+		}
 		static void LoadConfig() {}
 
 		static void Main(string[] args) {
-			Logging.Out("Starting server...");
-			CreateServerFiles();
+			Logging.Out("Server Bootstrap...");
+			CreateDefaultConfiguration();
+			CreatePluginFolder();
+			CreateLogsFolder();
 
-			Server server = new Server(new IPEndPoint(IPAddress.Any, 22222));
+			LoadConfig();
+
+			Server server = new Server(new IPEndPoint(IPAddress.Any, 22222)) {
+				MaxPlayers = 32,
+				ServerName = "Server MkI"
+			};
 
 			int exitCode = server.Run();
-			if (exitCode != 0) {
-				// TODO: make it yell about error?
-				//Logging.Out("Starting ran fine.");
-			} else {
-				//Logging.Out("Server probably crashed.");
-			}
+			Logging.Out("Server exited with code "+exitCode);
+			return;
 		}
 	}
 }

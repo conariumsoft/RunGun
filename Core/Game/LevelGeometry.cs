@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using RunGun.Core.Game;
 using RunGun.Core.Rendering;
 using System;
@@ -20,7 +21,6 @@ namespace RunGun.Core
 		}
 
 		
-
 		public Vector2 GetCenter() {
 			return Position + (Size / 2);
 		}
@@ -29,8 +29,8 @@ namespace RunGun.Core
 			return Size / 2;
 		}
 
-		public void Draw() {
-			ShapeRenderer.DrawRect(Color, Position, Size);
+		public void Draw(SpriteBatch sb) {
+			ShapeRenderer.Rect(sb, Color, Position, Size);
 		}
 	}
 }

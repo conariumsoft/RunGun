@@ -9,25 +9,31 @@
     <Import_RootNamespace>ClientS</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)AssetManagement\AudioManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)AssetManagement\TextureManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ChatSystem.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ClientMain.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BaseClient.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FrameCounter.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)InputManager.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)InputSystem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)KeyListener.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\CNetworkLayer.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\PacketDecoder.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\UdpUser.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\NetworkClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <MonoGameContentReference Include="$(MSBuildThisFileDirectory)Content\Content.mgcb" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)Content\ErrorTexture.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="$(MSBuildThisFileDirectory)Content\Content.mgcb" />
-    <None Include="$(MSBuildThisFileDirectory)Content\Font.spritefont">
+    <Content Include="$(MSBuildThisFileDirectory)Content\Font.spritefont">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Content\Textures\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Game\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Utility\" />
     <Folder Include="$(MSBuildThisFileDirectory)Rendering\" />
   </ItemGroup>
 </Project>

@@ -2,118 +2,143 @@
 using NLua.Exceptions;
 using RunGun.Core;
 using RunGun.Core.Game;
+using RunGun.Core.Utility;
+using RunGun.Server.Networking;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RunGun.Server
 {
+	static class LuaSnippets
+	{
+		
+		public static string TestMetadata =
+@"
+plugin = {
+	name = 'TemplatePlugin',
+	prefix = 'TP',
+	author = 'Joshua OLeary',
+	website = 'getmeth.com',
+	version = '1.0',
+	description = 'testing plugin for the plugin system',
+	root = 'MyPlugin',
+	dependencies = {}
+}
+";
+		public static string TestPluginDef =
+@"
+MyPlugin = {}
+
+function MyPlugin:OnServerStart()
+
+
+end
+
+function MyPlugin:OnServerStop()
+
+end
+
+";
+	}
+
+	interface IPlugin
+	{
+		string PluginName { get; set; }
+		string PluginAuthor { get; set; }
+		string PluginPrefix { get; set; }
+		string PluginVersion { get; set; }
+		LuaFunction PluginInit { get; set; }
+		LuaFunction ServerInit { get; set; }
+		LuaFunction ServerStop { get; set; }
+		LuaFunction OnConnectRequest { get; set; }
+		IPluggableServer Server { get; }
+	}
+	class Plugin : IPlugin
+	{
+		public string PluginName { get; set; }
+		public string PluginAuthor { get; set; }
+		public string PluginPrefix { get; set; }
+		public string PluginVersion { get; set; }
+		public LuaFunction PluginInit { get; set; }
+		public LuaFunction ServerInit { get; set; }
+		public LuaFunction ServerStop { get; set; }
+		public LuaFunction OnConnectRequest { get; set; }
+		public IPluggableServer Server => throw new NotImplementedException();
+
+
+		public Plugin() {
+			
+		}
+
+		public void Init() {
+			Logging.Out("Loaded " + PluginName + " by " + PluginAuthor);
+		}
+	}
+
 	class PluginManager
 	{
-		static List<Plugin> loadedPlugins;
+		List<Plugin> loadedPlugins { get; set; }
+		public PluginManager() {
+			loadedPlugins = new List<Plugin>();
+		}
+		public Plugin LoadPlugin(string rootFolderName) {
+			using (Lua lua = new Lua()) {
+				lua.LoadCLRPackage();
+				lua.DoString(@"package.path = './plugins/" + rootFolderName + "/?.lua'");
+				lua.DoFile(rootFolderName + "/metadata.lua");
 
-		public static event Action OnPluginLoad;
-		public static event Action OnPluginUnload;
-		public static event Action OnServerStart;
-		public static event Action OnServerStop;
-		public static event Action OnPlayerJoin;
-		public static event Action OnPlayerLeave;
+				string root = lua["plugin.root"] as string;
 
-		// Event invokers to be called from server
-		public static void CallOnPluginLoad() { OnPluginLoad?.Invoke(); }
-		public static void CallOnPluginUnload() { OnPluginUnload?.Invoke(); }
-		public static void CallOnServerStart() { OnServerStart?.Invoke(); }
-		public static void CallOnServerStop() { OnServerStop?.Invoke(); }
-		public static void CallOnPlayerJoin(Player p) { OnPlayerJoin?.Invoke(); }
-		public static void CallOnPlayerLeave(Player p) { OnPlayerLeave?.Invoke(); }
+				lua.DoFile(rootFolderName + "/init.lua");
 
-		public static void LoadPlugins() {
+				return new Plugin() {
+					PluginName = lua["plugin.name"] as string,
+					PluginAuthor = lua["plugin.author"] as string,
+					PluginPrefix = lua["plugin.prefix"] as string,
+					PluginVersion = lua["plugin.version"] as string,
+					ServerInit = lua[root + ".OnServerStart"] as LuaFunction,
+					ServerStop = lua[root + ".OnServerStop"] as LuaFunction,
+					OnConnectRequest = lua[root + ".OnConnectRequest"] as LuaFunction,
+				};
+			}
+		}
+
+		private Plugin LoadTestPlugin() {
+			using (Lua lua = new Lua()) {
+				lua.LoadCLRPackage();
+				
+				lua.DoString(LuaSnippets.TestMetadata);
+
+				string root = lua["plugin.root"] as string;
+
+				lua.DoString(LuaSnippets.TestPluginDef);
+
+				return new Plugin() {
+					PluginName = lua["plugin.name"] as string,
+					PluginAuthor = lua["plugin.author"] as string,
+					PluginPrefix = lua["plugin.prefix"] as string,
+					PluginVersion = lua["plugin.version"] as string,
+					ServerInit = lua[root + ".OnServerStart"] as LuaFunction,
+					ServerStop = lua[root + ".OnServerStop"] as LuaFunction,
+				};
+			}
+		}
+
+		public void LoadPlugins() {
+			
+			loadedPlugins.Add(LoadTestPlugin());
 			string[] filenames = Directory.GetDirectories("plugins");
 			foreach (var filename in filenames) {
-				Logging.Out("Loading " + filename + "...");
-				using (StreamReader stream = new StreamReader(filename + "/init.lua")) {
-					string read = stream.ReadToEnd();
-
-					var plugin = new Plugin(filename, read);
-					bool success = plugin.Execute(read);
-
-					if (success) {
-						loadedPlugins.Add(plugin);
-						plugin.RetreiveCallbacks();
-
-						OnPluginLoad += plugin.onPluginLoad.Callback;
-						OnPluginUnload += plugin.onPluginUnload.Callback;
-						OnServerStart += plugin.onServerStart.Callback;
-						OnServerStop += plugin.onServerStop.Callback;
-						OnPlayerJoin += plugin.onPlayerJoin.Callback;
-						OnPlayerLeave += plugin.onPlayerLeave.Callback;
-					}
-				}
+				loadedPlugins.Add(LoadPlugin(filename));
 			}
-		}
-		public static void UnloadPlugins() {
-			foreach (var plugin in loadedPlugins)
-				plugin.Unload();
-		}
-	}
 
-	struct LuaCallback
-	{
-		LuaFunction Function;
-		public LuaCallback(LuaFunction f) {
-			Function = f;
-		}
-		public void Callback() {
-			Function?.Call();
-		}
-	}
-
-	class Plugin
-	{
-		string rootFolder;
-		Lua lua;
-
-		public LuaCallback onPluginLoad;
-		public LuaCallback onPluginUnload;
-		public LuaCallback onServerStart;
-		public LuaCallback onServerStop;
-		public LuaCallback onPlayerJoin;
-		public LuaCallback onPlayerLeave;
-
-		public Plugin(string folderName, string data) {
-			lua = new Lua();
-			rootFolder = folderName;
-			InitializeLuaVM();
-		}
-		~Plugin() {
-			lua.Close();
-			lua.Dispose();
-		}
-
-		public void Unload() {}
-
-		public bool Execute(string body) {
-			try {
-				lua.DoString(body);
-			}catch (LuaScriptException e) {
-				// BITCH ABOUT ERROR
-				return false;
+			foreach (var plugin in loadedPlugins) {
+				plugin.Init();
 			}
-			return true;
-		}
 
-		public void RetreiveCallbacks() {
-			onPluginLoad = new LuaCallback(lua["OnLoad"] as LuaFunction);
-			onPluginUnload = new LuaCallback(lua["OnUnload"] as LuaFunction);
-			onServerStart = new LuaCallback(lua["OnServerStart"] as LuaFunction);
-			onServerStop = new LuaCallback(lua["OnServerStop"] as LuaFunction);
-			onPlayerJoin = new LuaCallback(lua["OnPlayerJoin"] as LuaFunction);
-			onPlayerLeave = new LuaCallback(lua["OnPlayerLeave"] as LuaFunction);
-		}
-
-		void InitializeLuaVM() {
-			lua.DoString("package.path = './plugins/"+rootFolder+"/?.lua'");
 		}
 	}
 }

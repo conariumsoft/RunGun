@@ -8,33 +8,30 @@ namespace RunGun.Core.Rendering
 	{
 		static Texture2D pixel;
 
-		static SpriteBatch spriteBatch;
-
-		public static void Initialize(GraphicsDevice dev, SpriteBatch sb) {
+		public static void Initialize(GraphicsDevice dev) {
 			pixel = new Texture2D(dev, 1, 1);
 			pixel.SetData<Color>(new Color[] { Color.White });
-			spriteBatch = sb;
 		}
 
-		public static void DrawRect(Color color, Vector2 position, Vector2 size) {
-			DrawRect(color, (int)position.X, (int)position.Y, (int)size.X, (int)size.Y);
+		public static void Rect(SpriteBatch sb, Color color, Vector2 position, Vector2 size, float rotation = 0) {
+			Rect(sb, color, (int)position.X, (int)position.Y, (int)size.X, (int)size.Y, rotation);
 		}
 
-		public static void DrawRect(Color color, int x, int y, int width, int height) {
-			spriteBatch.Draw(
+		public static void Rect(SpriteBatch sb, Color color, int x, int y, int width, int height, float rotation = 0) {
+			sb.Draw(
 				pixel,
 				new Rectangle(x, y, width, height),
 				null,
-				color, 0, new Vector2(0, 0), SpriteEffects.None, 0
+				color, rotation, new Vector2(0, 0), SpriteEffects.None, 0
 			);
 		}
 
-		public static void DrawLine(Color color, Vector2 start, Vector2 end) {
+		public static void Line(SpriteBatch sb, Color color, Vector2 start, Vector2 end) {
 			// see below for problems
 			// https://gamedev.stackexchange.com/questions/44015/how-can-i-draw-a-simple-2d-line-in-xna-without-using-3d-primitives-and-shders
 			Vector2 edge = end - start;
 			float angle = (float)Math.Atan2(edge.Y, edge.X);
-			spriteBatch.Draw(
+			sb.Draw(
 				pixel, 
 				new Rectangle( (int)start.X, (int)start.Y, (int)edge.Length(), 1),
 				null, 

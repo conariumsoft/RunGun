@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework.Graphics;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -12,6 +13,13 @@ namespace RunGun.Core.Game.Guns
 		AVERAGE,
 		HIGH,
 		VERY_HIGH,
+	}
+
+
+	public interface IFirearm
+	{
+		void Draw(SpriteBatch sb);
+
 	}
 
 	public class BaseGun

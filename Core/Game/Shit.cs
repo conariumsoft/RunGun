@@ -1,25 +1,22 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.Xna.Framework.Graphics;
 
 namespace RunGun.Core.Game
 {
-	public interface IEntityCollidable
+	public interface IGameController
 	{
-		void OnEntityCollide(Vector2 sep, Vector2 normal, Entity victim);
+		GameWorld World { get;}
+
+		void SpawnEntity(IEntity e);
+		void RemoveEntity(short id);
 	}
 
 	public interface IUpdateableRG
 	{
 		void Update(float delta);
-		void ServerUpdate(float delta);
-		void ClientUpdate(float delta);
 	}
 
 	public interface IDrawableRG
 	{
-		void Draw();
+		void Draw(SpriteBatch sb);
 	}
 }

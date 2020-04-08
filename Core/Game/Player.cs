@@ -8,120 +8,81 @@ using System.Text;
 
 namespace RunGun.Core.Game
 {
-	public enum Looking { CENTER, UP, DOWN }
 	public enum Facing { LEFT, RIGHT }
 
-	public class Player : Entity
+	public class Player : PhysicalEntity, ILiving, ICollidable
 	{
+		private const float walkAccelleration = 1000;
+		private const float maxWalkspeed = 200;
+		private const float jumpPower = 450;
+		private const float thrustPower = 100;
 
-		float walkAccelleration = 1000;
-		float maxWalkspeed = 200;
-		float jumpPower = 450;
-		float thrustPower = 100;
+		public float bulletTimer = 0.5f;
 
-		public bool destroyWhenDead = false;
-		
-		public bool moveLeft;
-		public bool moveRight;
-		public bool moveJump;
-		public bool shooting;
-		public bool lookUp;
-		public bool lookDown;
-
-		public double bulletTimer;
-
+		public bool MovingLeft { get; set; }
+		public bool MovingRight { get; set; }
+		public bool Jumping { get; set; }
+		public bool Shooting { get; set; }
+		public bool LookingUp { get; set; }
+		public bool LookingDown { get; set; }
+		public Vector2 BoundingBox { get; } = new Vector2(16, 16);
 		public string UserNickname { get; set; }
 		public Guid UserGUID { get; set; }
+		public Color Color { get; set; }
+		public int Health { get; set; } = 100;
 
-		public Color color;
-		public BaseGun equippedGun;
+		IFirearm EquippedGun { get; }
 
-		public float health = 100;
-		public float maxHealth = 100;
-		public float defense = 0;
-		
-		public Looking looking;
-		public Facing facing;
-
-		public Player() {
-			Random r = new Random();
-			Position = new Vector2(64, 64);
-			NextPosition = new Vector2(64, 64);
-			boundingBox = new Vector2(16, 16);
-			color = new Color(r.Next(1, 255), r.Next(1, 255), r.Next(1, 255));
-			bulletTimer = 0;
+		public Facing Facing { get; set; } = Facing.RIGHT;
+		// TODO: Constructor
+		public Player() {}
+		public void Kick() {
+			Console.WriteLine("GOT KICKED!");
 		}
 
-		public static Player Decode(byte[] packet) {
-			short entityID = BitConverter.ToInt16(packet, 0);
-			
-			byte r = packet[2];
-			byte g = packet[3];
-			byte b = packet[4];
-			string nickname = Encoding.ASCII.GetString(packet, 5, packet.Length-5);
-			return new Player() {
-				EntityID = entityID,
-				UserNickname = nickname,
-				color = new Color(r, g, b)
-			};
-		}
-
-		public new Vector2 GetDrawPosition() {
-			return Position - (boundingBox);
+		public Vector2 GetDrawPosition() {
+			return Position - (BoundingBox);
 		}
 
 		public override void Update(float delta) {
 			base.Update(delta);
-
-			bulletTimer -= delta;
+			if (MovingLeft)  { Facing = Facing.LEFT; }
+			if (MovingRight) { Facing = Facing.RIGHT; }
 		}
 
-		public override void ClientUpdate(float delta) {
-			base.ClientUpdate(delta);
-		}
-
-		public override void ServerUpdate(float delta) {
-			base.ServerUpdate(delta);
-		}
-
-		public override void OnCollide(Vector2 separation, Vector2 normal) {
-			base.OnCollide(separation, normal);
+		public void OnCollide(Vector2 separation, Vector2 normal) {
+			//base.OnCollide(separation, normal);
 			if (normal.Y == -1) {
 				IsFalling = false;
-				Velocity.Y = 0;
+				Velocity = new Vector2(Velocity.X, 0);
 
-				if (!moveLeft && !moveRight) {
+				if (!MovingLeft && !MovingRight) {
 					Velocity = new Vector2(Velocity.X * 0.9f, Velocity.Y);
 				}
 			}
-
 			if (normal.Y == 1) {
-				Velocity.Y = (-Velocity.Y) * 0.3f;
+				Velocity = new Vector2(Velocity.X, -Velocity.Y * 0.3f);
 			}
-
 			if (normal.X != 0) {
-				Velocity.X = 0;
+				Velocity = new Vector2(0, Velocity.Y);
 			}
 		}
-
 		public override void Physics(float step) {
-			base.Physics(step);
-
 			float x_thrust = 0;
 			float y_thrust = 0;
 
-			if (moveLeft && Velocity.X > -maxWalkspeed) {
+			if (MovingLeft && Velocity.X > -maxWalkspeed) {
 				x_thrust = (-walkAccelleration * step);
 			}
-			if (moveRight && Velocity.X < maxWalkspeed) {
+			if (MovingRight && Velocity.X < maxWalkspeed) {
 				x_thrust += (walkAccelleration * step);
 			}
-			if (moveJump && IsFalling == false) {
+			if (Jumping && IsFalling == false) {
 				IsFalling = true;
-				if (moveLeft) {
+				if (MovingLeft) {
 					x_thrust = -(thrustPower * Mass);
 					y_thrust = -(jumpPower/2 * Mass);
-				} else if (moveRight) {
+				} else if (MovingRight) {
 					x_thrust = (thrustPower * Mass);
 					y_thrust = -(jumpPower/2 * Mass);
 				} else {
@@ -129,13 +90,89 @@ namespace RunGun.Core.Game
 				}
 			}
 			Velocity += new Vector2(x_thrust, y_thrust);
+			base.Physics(step);
 		}
 
-		public override void Draw() {
-			base.Draw();
-			ShapeRenderer.DrawRect(color, GetDrawPosition(), boundingBox * 2);
-			// old method that I am obsolEEting
-			//spriteBatch.Draw(PlayerTexture, GetDrawPosition(), color);
+		public override void Draw(SpriteBatch sb) {
+			base.Draw(sb);
+			ShapeRenderer.Rect(sb, Color, GetDrawPosition(), BoundingBox * 2);
+
+			float rotation = 0;
+
+
+			if (LookingDown) {
+				rotation = (float)Math.PI;
+			}
+				
+
+			if (LookingUp) {
+
+			}
+
+			if (Facing == Facing.RIGHT) {
+				ShapeRenderer.Rect(sb, Color.DarkBlue, GetDrawPosition() + new Vector2(BoundingBox.X*2, 0), new Vector2(30, 10));
+			}
+
+			if (Facing == Facing.LEFT) {
+				ShapeRenderer.Rect(sb, Color.DarkBlue, GetDrawPosition()-new Vector2(30, 0), new Vector2(30, 10));
+			}
+
+			//ShapeRenderer.Rect(sb, Color.DarkBlue, GetDrawPosition(), new Vector2(20, 8), rotation);
+
+			TextRenderer.Print(sb, Health.ToString(), GetDrawPosition(), Color.Green);
 		}
+
+		private BulletDirection GetDirection() {
+			if (LookingUp) {
+				return BulletDirection.UP;
+			} else if (LookingDown) {
+				return BulletDirection.DOWN;
+			} else if (Facing == Facing.LEFT) {
+				return BulletDirection.LEFT;
+			}
+			return BulletDirection.RIGHT;
+		}
+
+		public override void ServerSideUpdate(IGameController gc, float dt) {
+			base.ServerSideUpdate(gc, dt);
+
+			bulletTimer += dt;
+
+			if (Shooting && bulletTimer >= 0.05f) {
+				bulletTimer = 0;
+
+				gc.SpawnEntity(new Bullet() {
+					CreatorID = this.EntityID,
+					Position = Position,
+					NextPosition = NextPosition,
+					Direction = GetDirection(),
+				});
+
+				// velocity impulse
+				var dir = GetDirection();
+
+				float xImp = 0;
+				float yImp = 0;
+
+				if (dir == BulletDirection.DOWN) {
+					yImp = 20;
+				}
+				if (dir == BulletDirection.UP) {
+					yImp = -10;
+				}
+				if (dir == BulletDirection.LEFT) {
+					xImp = -15;
+				}
+				if (dir == BulletDirection.RIGHT) {
+					xImp = 15;
+				}
+				Velocity -= new Vector2(xImp, yImp);
+
+			}
+		}
+
+		public override void ClientSideUpdate(IGameController gc, float dt) {}
+		public bool IsDead() { return false; }
+		public void Kill() {}
 	}
 }

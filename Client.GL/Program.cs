@@ -1,8 +1,6 @@
-﻿#define RENDERING
-#define DESKTOP_GL
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -14,7 +12,6 @@ namespace RunGun.GLClient
 {
 	public static class Program
     {
-
         [STAThread]
         static void Main(string[] args)
         {
@@ -22,21 +19,18 @@ namespace RunGun.GLClient
              * read this https://steamworks.github.io/installation/
              */
 
-            string nickname = "player";
             string ip = "127.0.0.1";
-            string port = "22222";
-            Thread.Sleep(200);
-            ClientMain game = new ClientMain(nickname, ip, port);
+            int port = 22222;
+            Thread.Sleep(500);
+            using (GLClient game = new GLClient()) {
+                game.Nickname = "glplayer";
+                game.ConnectToServer(new IPEndPoint(IPAddress.Parse(ip), port));
+                game.Run();
+            }
 
-			GLChatSystem chat = new GLChatSystem(game.OnPlayerSendChat);
-			game.chat = chat;
+                
 
-            game.Window.TextInput += chat.OnTextInput;            
-
-            game.Run();
-
-			game.Dispose();
-			return;
+			//game.Dispose();
         }
     }
 }
