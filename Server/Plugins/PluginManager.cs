@@ -1,86 +1,15 @@
 ﻿using NLua;
-using NLua.Exceptions;
-using RunGun.Core;
-using RunGun.Core.Game;
-using RunGun.Core.Utility;
-using RunGun.Server.Networking;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 
-namespace RunGun.Server
+namespace RunGun.Server.Plugins
 {
-	static class LuaSnippets
-	{
-		
-		public static string TestMetadata =
-@"
-plugin = {
-	name = 'TemplatePlugin',
-	prefix = 'TP',
-	author = 'Joshua OLeary',
-	website = 'getmeth.com',
-	version = '1.0',
-	description = 'testing plugin for the plugin system',
-	root = 'MyPlugin',
-	dependencies = {}
-}
-";
-		public static string TestPluginDef =
-@"
-MyPlugin = {}
-
-function MyPlugin:OnServerStart()
-
-
-end
-
-function MyPlugin:OnServerStop()
-
-end
-
-";
-	}
-
-	interface IPlugin
-	{
-		string PluginName { get; set; }
-		string PluginAuthor { get; set; }
-		string PluginPrefix { get; set; }
-		string PluginVersion { get; set; }
-		LuaFunction PluginInit { get; set; }
-		LuaFunction ServerInit { get; set; }
-		LuaFunction ServerStop { get; set; }
-		LuaFunction OnConnectRequest { get; set; }
-		IPluggableServer Server { get; }
-	}
-	class Plugin : IPlugin
-	{
-		public string PluginName { get; set; }
-		public string PluginAuthor { get; set; }
-		public string PluginPrefix { get; set; }
-		public string PluginVersion { get; set; }
-		public LuaFunction PluginInit { get; set; }
-		public LuaFunction ServerInit { get; set; }
-		public LuaFunction ServerStop { get; set; }
-		public LuaFunction OnConnectRequest { get; set; }
-		public IPluggableServer Server => throw new NotImplementedException();
-
-
-		public Plugin() {
-			
-		}
-
-		public void Init() {
-			Logging.Out("Loaded " + PluginName + " by " + PluginAuthor);
-		}
-	}
-
 	class PluginManager
 	{
 		List<Plugin> loadedPlugins { get; set; }
+
 		public PluginManager() {
 			loadedPlugins = new List<Plugin>();
 		}
@@ -109,7 +38,7 @@ end
 		private Plugin LoadTestPlugin() {
 			using (Lua lua = new Lua()) {
 				lua.LoadCLRPackage();
-				
+
 				lua.DoString(LuaSnippets.TestMetadata);
 
 				string root = lua["plugin.root"] as string;
@@ -128,7 +57,7 @@ end
 		}
 
 		public void LoadPlugins() {
-			
+
 			loadedPlugins.Add(LoadTestPlugin());
 			string[] filenames = Directory.GetDirectories("plugins");
 			foreach (var filename in filenames) {

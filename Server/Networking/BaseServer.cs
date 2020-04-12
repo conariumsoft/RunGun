@@ -32,20 +32,20 @@ namespace RunGun.Server.Networking
 			udpClient = new UdpClient(endpoint);
 		}
 
-		[Conditional("NOTHING")]
+		[Conditional("v")]
 		void DumpDataOut(byte[] data) {
 			Console.Write("SO: ");
 			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0} ", data[i]);
+				Console.Write("{0:X2}", data[i]);
 			}
 			Console.WriteLine("");
 		}
 
-		[Conditional("NOTHING")]
+		[Conditional("v")]
 		void DumpData(byte[] data) {
 			Console.Write("SI: ");
 			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0} ", data[i]);
+				Console.Write("{0:X2}", data[i]);
 			}
 			Console.WriteLine("");
 		}
@@ -184,8 +184,7 @@ namespace RunGun.Server.Networking
 					if (e.ErrorCode == 10054) {
 						// 10054 @ An existing connection was forcibly closed by the remote host.
 					} else {
-						//Console.WriteLine(String.Format(
-						//"SocketException: {0} @ {1}", e.ErrorCode, e.Message));
+						
 						throw e;
 					}
 				}
@@ -211,12 +210,9 @@ namespace RunGun.Server.Networking
 		}
 
 		protected virtual void OnUserConnect(User user) {
-			//Logging.Out(user.Nickname + " connected");
 			ConnectedUsers.Add(user);
 		}
-
 		protected virtual void OnUserDisconnect(User user) {
-			//Logging.Out(user.Nickname + " disconnected");
 			ConnectedUsers.Remove(user);
 		}
 
@@ -264,8 +260,6 @@ namespace RunGun.Server.Networking
 					return;
 				}
 				Console.WriteLine("Could not find user?");
-				//OnUserMessage?.Invoke(new NetworkPeer() { IPAddress = recv.RemoteEndPoint}, recv.Buffer);
-				//return;
 			}
 		}
 

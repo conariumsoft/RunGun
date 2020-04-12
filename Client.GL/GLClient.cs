@@ -2,23 +2,28 @@
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using RunGun.Core.Networking;
+using RunGun.Client.Input;
 
 namespace RunGun.GLClient
 {
 	class GLClient : BaseClient 
 	{
-
 		public GLClient() : base() {
-			Chat = new GLChatSystem(OnPlayerSendChat);
-			Input = new InputManager(InputMode.KEYBOARD);
+			Chat = new GLChatSystem();
+			Input = new KeyboardInput();
 
-			//Window.TextInput += Chat.OnTextInput;
+			Window.TextInput += InputConnector;
 			Window.AllowUserResizing = true;
 			Window.AllowAltF4 = true;
 		}
 
+		private void InputConnector(object sender, TextInputEventArgs args) {
+			Chat.OnTextInput(args.Character, args.Key);
+		}
+
 		public void OnPlayerSendChat(string str) {
-			// TODO: fixxx
+			Client.Send(new C_ChatPacket(str));
 		}
 
 		protected override void Initialize() {

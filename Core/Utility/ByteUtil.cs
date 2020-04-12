@@ -4,27 +4,44 @@ using System.Runtime.InteropServices;
 
 namespace RunGun.Core.Utility
 {
-	// https://codereview.stackexchange.com/questions/122969/udp-server-design-and-performance?rq=1 holy fuck
-	public static class ByteUtil
+	/*
+	 * So do not fear, for I am with you; do not be dismayed, for I am your God. 
+	 * I will strengthen you and help you; I will uphold you with my righteous right hand.
+	 * - josh
+	 */
+
+	public class GoddamnCustomSerializer
 	{
+		// the filtration of the custom serialize would indefinitely search the intricacy of the problem
+
+		
+	}
+
+	// https://codereview.stackexchange.com/questions/122969/udp-server-design-and-performance?rq=1 holy fuck
+	public static class ByteUtil {
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="s"></param>
 		/// <returns></returns>
+		/// 
+
 		public static byte[] Serialize<T>(T s) {
+			int size = Marshal.SizeOf(typeof(T));
+			IntPtr ptr = Marshal.AllocHGlobal(size);
 			try {
-				var size = Marshal.SizeOf(typeof(T));
+				
 				var array = new byte[size];
-				var ptr = Marshal.AllocHGlobal(size);
+				
 				Marshal.StructureToPtr(s, ptr, true);
 				Marshal.Copy(ptr, array, 0, size);
-				Marshal.FreeHGlobal(ptr);
 				return array;
 			} catch (Exception e) {
 				Console.WriteLine("Exception occured with " + typeof(T).ToString());
 				throw e;
+			} finally {
+				Marshal.FreeHGlobal(ptr);
 			}
 			
 		}
@@ -43,19 +60,22 @@ namespace RunGun.Core.Utility
 		/// <param name="array"></param>
 		/// <returns></returns>
 		public static T Deserialize<T>(byte[] array){
+			int size = Marshal.SizeOf(typeof(T));
+			IntPtr ptr = Marshal.AllocHGlobal(size);
 			try {
-				var size = Marshal.SizeOf(typeof(T));
-				var ptr = Marshal.AllocHGlobal(size);
+				
 				Marshal.Copy(array, 0, ptr, size);
-				var s = (T)Marshal.PtrToStructure(ptr, typeof(T));
-				Marshal.FreeHGlobal(ptr);
+				T s = (T)Marshal.PtrToStructure(ptr, typeof(T));
+				
 				return s;
 
 			} catch (Exception e) {
 				Console.WriteLine("Incorrectly formatted packet: " + typeof(T).ToString());
 				Dump(array);
 				throw e;
-			}	
+			} finally {
+				Marshal.FreeHGlobal(ptr);
+			}
 		}
 
 

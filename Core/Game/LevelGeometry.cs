@@ -8,7 +8,7 @@ using System.Text;
 
 namespace RunGun.Core
 {
-	public class LevelGeometry : IDrawableRG
+	public class LevelGeometry : IRenderComponent
 	{
 		public Vector2 Position;
 		public Vector2 Size;
@@ -31,6 +31,7 @@ namespace RunGun.Core
 
 		public void Draw(SpriteBatch sb) {
 			ShapeRenderer.Rect(sb, Color, Position, Size);
+			ShapeRenderer.Rect(sb, Color.Black, Position + new Vector2(4, 4), Size - new Vector2(8, 8));
 		}
 	}
 }

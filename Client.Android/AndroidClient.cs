@@ -1,17 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-
-using Android.App;
-using Android.Content;
-using Android.OS;
-using Android.Runtime;
-using Android.Views;
-using Android.Widget;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using RunGun.Client;
+using RunGun.Client.Input;
 
 namespace RunGun.AndroidClient
 {
@@ -21,16 +10,10 @@ namespace RunGun.AndroidClient
 	}
 
 	class AndroidClient : BaseClient {
-		//public override ChatManager Chat { get; set; }
 
 		public AndroidClient() : base() {
 			Chat = new AndroidChatManager();
-
-			graphicsDeviceManager.IsFullScreen = true;
-			//graphicsDeviceManager.SupportedOrientations = DisplayOrientation.LandscapeLeft | DisplayOrientation.LandscapeRight;
-			//graphicsDeviceManager.ApplyChanges();
-
-			Input = new InputManager(InputMode.TOUCH);
+			Input = new TouchInput();
 		}
 
 		protected override void Initialize() {
@@ -50,7 +33,15 @@ namespace RunGun.AndroidClient
 		}
 
 		protected override void Draw(GameTime gameTime) {
+
+
 			base.Draw(gameTime);
+		}
+
+		protected override void DrawGameLayer() {
+			base.DrawGameLayer();
+
+			Input.Draw(SpriteBatch, GraphicsDevice);
 		}
 	}
 }

@@ -9,7 +9,7 @@ using System.Text;
 
 namespace RunGun.Core
 {
-	public class GameWorld : IUpdateableRG
+	public class GameWorld : IUpdateComponent
 	{
 		public List<LevelGeometry> levelGeometries;
 		public List<IEntity> entities;

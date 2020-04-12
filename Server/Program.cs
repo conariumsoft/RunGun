@@ -4,25 +4,25 @@ using System.Net;
 
 namespace RunGun.Server
 {
-	class ServerProgram
+	class Program
 	{
-		static void CreateDefaultConfiguration() {
+		private static void CreateDefaultConfiguration() {
 			// copy serverconf to folder if doesn't exist yet.
 			if (!System.IO.File.Exists("serverconf.lua")) {
 				var sw = System.IO.File.CreateText("serverconf.lua");
-				var data = FileUtils.ReadEmbedded("RunGun.Server.LuaScripts.default-serverconf.lua");
+				var data = EmbeddedFileReader.Read("RunGun.Server.LuaScripts.default-serverconf.lua");
 				sw.Write(data);
 				sw.Flush();
 				sw.Close();
 			}
 		}
-		static void CreatePluginFolder() {
+		private static void CreatePluginFolder() {
 			System.IO.Directory.CreateDirectory("plugins");
 		}
-		static void CreateLogsFolder() {
+		private static void CreateLogsFolder() {
 			System.IO.Directory.CreateDirectory("logs");
 		}
-		static void LoadConfig() {}
+		private static void LoadConfig() {}
 
 		static void Main(string[] args) {
 			Logging.Out("Server Bootstrap...");

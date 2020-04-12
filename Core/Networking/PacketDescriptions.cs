@@ -11,11 +11,257 @@
  *
  *
  */
+using prototypecode;
 using RunGun.Core.Game;
+using RunGun.Core.Networking;
 using RunGun.Core.Utility;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.InteropServices;
+
+using static System.Net.IPAddress;
+// TODO: make network protocol little-endian
+// ur gonna have to redesign everything LUL
+namespace prototypecode
+{
+	// use the protocol and schema attributes to generate a perfect-fit serializer 
+	// and deserializer for each datagram type (at runtime, meaning I don't have to manually change them. 
+	// they will auto-update to whatever I make the packets)
+	// and then i'll cache the resulting serialization methods after generating the first one, 
+	// so I don't slow anything down
+
+	public class ByteBuffer
+	{
+		private int bufferSize;
+		private int spaceFilled;
+
+		private byte[] buffer;
+
+		public ByteBuffer(int size) {
+			bufferSize = size;
+			spaceFilled = 0;
+			buffer = new byte[bufferSize];
+		}
+
+		public void Push(params byte[] bytes) {
+			if (bytes.Length > (bufferSize - spaceFilled))
+				throw new Exception("Attempt to overfill a byte buffer");
+
+			for (int i = 0; i < bytes.Length; i++) {
+				buffer[spaceFilled] = bytes[i];
+				spaceFilled++;
+				Console.WriteLine(spaceFilled);
+			}
+		}
+
+		public byte Pull() {
+			spaceFilled--;
+			byte data = buffer[spaceFilled];
+
+			return data;
+		}
+		public void Pull(int quantity, ref byte[] buff) {
+			for (int i = quantity-1; i >= 0; i--) {
+				spaceFilled--;
+				buff[i] = buffer[spaceFilled];
+			}
+		}
+		public byte[] Copy() {
+			return buffer;
+		}
+		public void Copy(ref byte[] destination) {
+			Array.Copy(buffer, 0, destination, 0, buffer.Length);
+		}
+		public void Copy(int start, int length, ref byte[] destination, int destinationIndex = 0) {
+			Array.Copy(buffer, start, destination, destinationIndex, length);
+		}
+		public void Clear() {
+			for (int i = 0; i < bufferSize; i++) {
+				buffer[i] = default;
+			}
+		}
+		public byte Peek(int index) {
+			return buffer[index];
+		}
+	}
+
+	public class SmartBuffer
+	{
+		public void Push<T>(T instance) {
+
+		}
+	}
+
+	public struct MemberSerializationProfile
+	{
+		public Type MemberType { get; set; }
+		public string MemberName { get; set; }
+		public int MemberBufferIndex { get; set; }
+	}
+	
+	public static class TypeSer
+	{
+		public static T To<T>(byte[] data) {
+
+
+			return default(T);
+		}
+		public static byte[] From(object obj) {
+
+			Type t = obj.GetType();
+
+			if (t == typeof(short))  return FromShort((short)obj);
+			if (t == typeof(int))    return FromInt((int)obj);
+			if (t == typeof(float))  return FromFloat((int)obj);
+			if (t == typeof(double)) return FromDouble((double)obj);
+
+			
+
+			throw new Exception();
+
+		}
+		public static byte[] FromShort(short input) {
+			return BitConverter.GetBytes(HostToNetworkOrder(input));
+		}
+		public static byte[] FromUShort(ushort input) { }		
+		public static byte[] FromInt(int input) {
+			return BitConverter.GetBytes(HostToNetworkOrder(input));
+		}
+
+		
+		public static void FromFloat()
+
+		public static byte[] ToUShort(ushort input) {
+			return null;
+		}
+		public static short ToShort(byte[] input) {
+			return NetworkToHostOrder(BitConverter.ToInt16(input, 0));
+		}
+		public static byte[] ToUInt(uint input) {
+			return null;
+		}
+		public static byte[] ToFloat(int input) {
+			return null;
+		}
+		public static byte[] ToDouble(int input) {
+			return null;
+		}
+		public static byte[] ToGuid(int input) {
+			return null;
+		}
+		public static byte[] ToString(string input, int length) {
+			return null;
+		}
+
+		public static void Short(short input, ref byte[] output) { }
+		public static void UShort(ushort input, ref byte[] output) { }
+		public static void Int(int input, ref byte[] output) { }
+	}
+
+	public class SerializationProfile
+	{
+		public List<MemberSerializationProfile> Fields;
+		public byte[] Buffer;
+	}
+
+	/* System for tagging objects as packets
+	 * 
+	 * Parse the Attribute data, figure out what fields in the packet
+	 * 
+	 * Create a lookup table of fields, so that reflection 
+	 * lookup doesn't have to be done after the first time
+	 * 
+	 */
+
+	public static class Balls
+	{
+		static Dictionary<Type, ByteBuffer> buffers = new Dictionary<Type, ByteBuffer>();
+
+		static Dictionary<Type, SerializationProfile> profiles = new Dictionary<Type, SerializationProfile>();
+
+		public static void GenerateProfile(Type type) {
+
+			SerializationProfile profile = new SerializationProfile();
+			PropertyInfo[] properties = type.GetProperties();
+
+			int bufferOffset = 0;
+			for (int i = 0; i < properties.Length; i++) {
+				PropertyInfo prop = properties[i];
+
+				Schema schema = (Schema)Attribute.GetCustomAttribute(prop, typeof(Schema));
+				if (schema == null)
+					continue;
+
+				Type propType = prop.PropertyType;
+
+				profile.Fields.Add(new MemberSerializationProfile {
+					MemberType = prop.PropertyType,
+					MemberName = prop.Name,
+					MemberBufferIndex = bufferOffset
+				});
+
+				if (propType == typeof(short)) { bufferOffset += 2; }
+				if (propType == typeof(int)) { bufferOffset += 4; }
+				if (propType == typeof(float)) { bufferOffset += 4; }
+			}
+
+			profiles.Add(type, profile);
+		}
+
+		public static void Serialize<T>(T inst) {
+			Type type = inst.GetType();
+
+			bool Le = BitConverter.IsLittleEndian;
+
+			if (profiles.ContainsKey(type)) {
+				SerializationProfile profile = profiles[type];
+
+				// clear profile buffer here
+				ByteBuffer buffer = buffers[type];
+				buffer.Clear();
+				for (int i = 0; i < profile.Fields.Count; i++) {
+					MemberSerializationProfile member = profile.Fields[i];
+					Type memberType = member.MemberType;
+
+					PropertyInfo info = inst.GetType().GetProperty(member.MemberName);
+
+					object retrieved = info.GetValue(inst, null);
+
+					buffer.Push(TypeSer.From(retrieved));
+				}
+
+			} else {
+				GenerateProfile(type);
+			}
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
+	class Packet : Attribute
+	{
+
+	}
+
+	class Schema : Attribute
+	{
+
+	}
+
+	[Packet]
+	class PotentialPacket
+	{
+		[Schema] int fi;
+		[Schema] int fo { get; set; } = 2;
+		[Schema] int umom { get; set; }
+	}
+
+	//public interface fuckhead
+	//{
+		//public static ByteBuffer Buffer { get; }
+	//}
+
+}
 
 namespace RunGun.Core.Networking
 {
@@ -59,7 +305,7 @@ namespace RunGun.Core.Networking
 	[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi)]
 	class S_PeerJoinPacket : BasePacket
 	{
-		[FieldOffset(0)] public readonly new Protocol Code = Protocol.S_PeerJoined;
+		[FieldOffset(0)] public readonly Protocol Code = Protocol.S_PeerJoined;
 		[FieldOffset(1)] public Guid PeerGUID;
 
 		public S_PeerJoinPacket() { }
@@ -70,7 +316,7 @@ namespace RunGun.Core.Networking
 	[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi)]
 	class S_PeerLeftPacket : BasePacket
 	{
-		[FieldOffset(0)] public readonly new Protocol Code = Protocol.S_PeerLeft;
+		[FieldOffset(0)] public readonly Protocol Code = Protocol.S_PeerLeft;
 		[FieldOffset(1)] public Guid PeerGUID;
 
 		public S_PeerLeftPacket() { }
@@ -81,7 +327,7 @@ namespace RunGun.Core.Networking
 	[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi)]
 	class S_AssignPlayerIDPacket : BasePacket
 	{
-		[FieldOffset(0)] public readonly new Protocol Code = Protocol.S_AssignPlayerID;
+		[FieldOffset(0)] public readonly Protocol Code = Protocol.S_AssignPlayerID;
 		[FieldOffset(1)] public short PlayerID;
 
 		public S_AssignPlayerIDPacket() { }
@@ -154,26 +400,28 @@ namespace RunGun.Core.Networking
 
 		public S_PingReplyPacket() {}
 	}
-	[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi)]
+
+	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
 	class S_GameStateHeader : IPacketHeader
 	{
-		[FieldOffset(0)] public readonly Protocol Code = Protocol.S_GameState;
-		[FieldOffset(1)] public int PhysicsStep;
+		public readonly Protocol Code = Protocol.S_GameState;
+		public int PhysicsStep;
 
 		public S_GameStateHeader() { }
 		public S_GameStateHeader(int step) {
 			PhysicsStep = step;
 		}
 	}
-	[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi)]
+	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
 	struct S_GameStateSlice : IDataSlice
 	{
-		[FieldOffset(0)] public short EntityID;
-		[FieldOffset(2)] public float NextX;
-		[FieldOffset(6)] public float NextY;
-		[FieldOffset(10)] public float VelocityX;
-		[FieldOffset(14)] public float VelocityY;
+		public short EntityID;
+		public float NextX;
+		public float NextY;
+		public float VelocityX;
+		public float VelocityY;
 	}
+
 	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
 	class S_MapHeader : IPacketHeader
 	{
@@ -220,8 +468,11 @@ namespace RunGun.Core.Networking
 	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
 	class C_PingReplyPacket : BasePacket
 	{
+		
 		public readonly Protocol Code = Protocol.C_PingReply;
 		public C_PingReplyPacket() { }
+		public void SerializeToBuffer() { }
+		public void DeserializeFromBuffer() { }
 	}
 
 	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
@@ -292,310 +543,7 @@ namespace RunGun.Core.Networking
 	}
 
 	#endregion
-	/*	
-		public struct ConnectAcceptPacket : IPacket
-		{
-			public NetCommand Code { get; set; }
-			public Guid UserAssignedGUID { get; set; }
-			public int InitialPhysicsStep { get; set; }
-			public ConnectAcceptPacket(Guid id, int physStep) {
-				Code = NetCommand.AcceptConnectRequest;
-				UserAssignedGUID = id;
-				InitialPhysicsStep = physStep;
-			}
-		}
-		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-		public struct ConnectDenyPacket : IPacket
-		//
-		{
-			public NetCommand Code { get; set; }
-			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-			public string DenialReason;
-			public ConnectDenyPacket(string reason) {
-				Code = NetCommand.DenyConnectRequest;
-				DenialReason = reason;
-			}
-		}
-		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-		public struct KickPacket : IPacket
-		//
-		{
-			public NetCommand Code { get; set; }
-			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-			public string KickReason;
-			public KickPacket(string reason) {
-				Code = NetCommand.KickClient;
-				KickReason = reason;
-			}
-		}
-		public struct PeerJoinedPacket : IPacket
-		//
-		{
-			
-		}
-		public struct PeerLeftPacket : IPacket
-		//
-		{
-			
-		}
-		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-		class S_ChatPacket : BasePacket
-		{
-			
-		}*/
-
-
-	/*public struct PingPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public short Unused { get; set; }
-		public PingPacket(short _) {
-			Code = NetCommand.Ping;
-			Unused = 0;
-		}
-	}
-	public struct PingReplyPacket : IPacket
-	//
-	{
-		public NetCommand Code { get; set; }
-		public short Unused { get; set; }
-		public PingReplyPacket(short _) {
-			Code = NetCommand.PingReply;
-			Unused = 0;
-		}
-	}
-	public struct AssignPlayerIDPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public short YourPlayerID { get; set; }
-		public AssignPlayerIDPacket(short id) {
-			Code = NetCommand.AssignPlayerID;
-			YourPlayerID = id;
-		}
-	}
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-	public struct AddPlayerEntPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public short EntityID { get; set; }
-		public byte R { get; set; }
-		public byte G { get; set; }
-		public byte B { get; set; }
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-		public string Nickname;
-		public AddPlayerEntPacket(short entityID, byte r, byte b, byte g, string nick) {
-			Code = NetCommand.AddPlayerEnt;
-			EntityID = entityID;
-			R = r;
-			G = g;
-			B = b;
-			Nickname = nick;
-		}
-	}
-	public struct AddBulletEntPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public short EntityID { get; set; }
-		public short CreatorID { get; set; }
-		public BulletDirection Direction { get; set; }
-		public AddBulletEntPacket(short entityID, short creatorID, BulletDirection direction) {
-			Code = NetCommand.AddBulletEnt;
-			EntityID = entityID;
-			CreatorID = creatorID;
-			Direction = direction;
-		}
-	}
-	public struct DeleteEntityPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public short EntityID { get; set; }
-
-		public DeleteEntityPacket(short entityID) {
-			EntityID = entityID;
-			Code = NetCommand.DeleteEntity;
-		}
-	}
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-	public struct ReplyServerInfoPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public int MaxPlayers { get; set; }
-		public int PlayersOnline { get; set; }
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-		public string ServerName;
-
-		public ReplyServerInfoPacket(int maxPlayers, int playersOnline, string serverName) {
-			Code = NetCommand.ReplyGetServerInfo;
-			MaxPlayers = maxPlayers;
-			PlayersOnline = playersOnline;
-			ServerName = serverName;
-		}
-	}
-
-	#region Leaderboard
-	public struct LeaderboardLayoutHeader : IHeader
-	{
-		public NetCommand Code { get; set; }
-
-		public LeaderboardLayoutHeader(short _) {
-			Code = NetCommand.SendLeaderboardLayout;
-		}
-	}
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-	public struct LeaderboardColumnData : IPayload
-	{
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-		public string Label;
-	}
-	#endregion
-
-	#region Map Download
-	public struct MapDataHeader : IHeader
-	{
-		public NetCommand Code { get; set; }
-
-		public MapDataHeader(short _) {
-			Code = NetCommand.SendMapData;
-		}
-	}
-	public struct GeometryData : IPayload
-	{
-		public short X { get; set; }
-		public short Y { get; set; }
-		public short Width { get; set; }
-		public short Height { get; set; }
-		public byte R { get; set; }
-		public byte G { get; set; }
-		public byte B { get; set; }
-
-		public GeometryData(LevelGeometry geom) {
-			X = (short)geom.Position.X;
-			Y = (short)geom.Position.Y;
-			Width = (short)geom.Size.X;
-			Height = (short)geom.Size.Y;
-			R = geom.Color.R;
-			G = geom.Color.G;
-			B = geom.Color.B;
-		}
-	}
-	#endregion
-
-	#region Game State
-	public struct GameStateHeader : IHeader
-	{
-		public NetCommand Code { get; set; }
-		public int PhysicsFrame { get; set; }
-		public GameStateHeader(int physFrame) {
-			Code = NetCommand.SendGameState;
-			PhysicsFrame = physFrame;
-		}
-	}
-	public struct EntityStateData : IPayload
-	{
-		public short EntityID { get; set; }
-		public float NextX { get; set; }
-		public float NextY { get; set; }
-		public float VelocityX { get; set; }
-		public float VelocityY { get; set; }
-	}
-	#endregion
-
-	#region Online Players List
-	public struct PlayerListHeader : IHeader
-	{
-		public NetCommand Code { get; set; }
-
-		public PlayerListHeader(short _) {
-			 Code = NetCommand.ReplyGetOnlinePlayers;
-		}
-	}
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-	public struct PlayerListEntry : IPayload
-	{
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-		public string PlayerName;
-	}
-
-	#endregion
-
-	#endregion
-
-	#region ClientPackets
-
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-	struct RequestConnectPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-		public string RequestedNickname;
-
-		public RequestConnectPacket(string name) {
-			Code = NetCommand.RequestConnect;
-			RequestedNickname = name;
-		}
-	}
-	struct DisconnectPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-
-		public DisconnectPacket(short _) {
-			Code = NetCommand.Disconnect;
-		}
-	}
-	struct UserSendChatPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-
-		public UserSendChatPacket(short _) {
-			 Code = NetCommand.ChatSay;
-		}
-	}
-	struct UserInputStatePacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public bool Left { get; set; }
-		public bool Right { get; set; }
-		public bool Jumping { get; set; }
-		public bool Shooting { get; set; }
-		public bool LookUp { get; set; }
-		public bool LookDown { get; set; }
-
-		public UserInputStatePacket(bool left, bool right, bool jump, bool shooting, bool lookUp, bool lookDown) {
-			Code = NetCommand.InputState;
-			Left = left;
-			Right = right;
-			Jumping = jump;
-			Shooting = shooting;
-			LookUp = lookUp;
-			LookDown = lookDown;
-		}
-	}
-	struct GetServerInfoPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-
-		public GetServerInfoPacket(short _) {
-			 Code = NetCommand.GetServerInfo;
-		}
-	}
-	struct GetOnlinePlayersPacket : IPacket {
-		public NetCommand Code { get; set; }
-
-		public GetOnlinePlayersPacket(short _) {
-			Code = NetCommand.GetOnlinePlayers;
-		}
-	}
-	struct UserChatPacket : IPacket
-	{
-		public NetCommand Code { get; set; }
-		public string Message { get; set; }
-		public UserChatPacket(string msg) {
-			Code = NetCommand.ChatSay;
-			Message = msg;
-		}
-	}
-	#endregion*/
+	
 
 
 	public enum NetCommand : byte

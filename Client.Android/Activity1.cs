@@ -21,7 +21,6 @@ namespace RunGun.AndroidClient
 	{
 
 		protected override void OnCreate(Bundle bundle) {
-			//this.SetRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 			AndroidEnvironment.UnhandledExceptionRaiser += (sender, args) => {
 				var ex = args.Exception;
 
@@ -36,7 +35,6 @@ namespace RunGun.AndroidClient
 			game.ConnectToServer(new IPEndPoint(IPAddress.Parse("192.168.0.2"), 22222));
 
 			game.Run();
-
 		}
 	}
 }

@@ -7,38 +7,10 @@ namespace RunGun.Client
 {
     public enum InputMode { KEYBOARD, CONTROLLER, TOUCH }
 
-    public struct Keybinds
-    {
-        Keys Left;
-        Keys Right;
-        Keys Jump;
-        Keys Shoot;
-        Keys LookUp;
-        Keys LookDown;
-
-        public Keybinds? LoadFromFile() {
-            return null;
-        }
-    }
 
     public class InputManager
     {
         InputMode inputMode;
-
-        //public event Action OnStartMoveLeft;
-        //public event Action OnStopMoveLeft;
-        //public event Action OnStartMoveRight;
-        //public event Action OnStopMoveRight;
-        //public event Action OnStartJump;
-       // public event Action OnStopJump;
-        //public event Action OnStartLookUp;
-       // public event Action OnStopLookUp;
-       // public event Action OnStartLookDown;
-        //public event Action OnStopLookDown;
-        //public event Action OnStartShoot;
-        //public event Action OnStopShoot;
-
-        public Keybinds binds;
 
         public Keys moveLeftKey;
         public Keys moveRightKey;
@@ -73,9 +45,6 @@ namespace RunGun.Client
         public bool IsUserLookingUp() { return lookingUp; }
         public bool IsUserLookingDown() { return lookingDown; }
 
-        protected void UpdateEvents() {
-
-        }
 
         protected virtual void UpdateKeyboard(float dt) {
             var kbState = Keyboard.GetState();
@@ -91,16 +60,20 @@ namespace RunGun.Client
         protected virtual void UpdateTouch(float dt) {
             movingLeft = false;
             movingRight = false;
+            jumping = false;
+            shooting = false;
+            lookingUp = false;
+            lookingDown = false;
 
             foreach (TouchLocation touch in TouchPanel.GetState()) {
 
                //Console.WriteLine("TOUCH: {0} {1}", touch.Position, touch.Pressure);
 
-                if (touch.Position.Y < 400) {
+                if (touch.Position.X < 200) {
                     movingLeft = true; 
                 }
 
-                if (touch.Position.Y > 600) {
+                if (touch.Position.X > 500) {
                     movingRight = true;
                 }
             } 

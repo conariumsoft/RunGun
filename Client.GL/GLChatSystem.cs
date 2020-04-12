@@ -11,12 +11,11 @@ namespace RunGun.GLClient
 {
 	public class GLChatSystem : BaseChatSystem
 	{
-		public bool isTypingMessage;
-		public List<string> typedMessageHistory;
-		public string typingMessageBuffer;
-		public string typingMessageDisplay;
-		public int cursorPos;
-		public int historyPos;
+		public List<string> InputMessageHistory;
+		public string InputBuffer;
+		public string InputDisplay;
+		public int CursorPosition;
+		public int HistoryPos;
 
 		// workaround to grab arrow keys
 		// LUL @MICROCOCK
@@ -29,98 +28,91 @@ namespace RunGun.GLClient
 
 		double cursorBlinkClock;
 
-		public GLChatSystem(Action<string> onChatCallback) : base() {
+
+		public override void OnKeyPress(Keys key) {
+			base.OnKeyPress(key);
+		}
+
+		public override void OnTextInput(char inp, Keys key) {
+
+			//base.OnTextInput(inp, key);
+			if (IsClientTyping) {
+				if (key == Keys.Enter) {
+					OnClientSendMessage?.Invoke(InputBuffer);
+					InputBuffer = "";
+					IsClientTyping = false;
+					CursorPosition = 0;
+				} else if (key == Keys.Escape) {
+					IsClientTyping = false;
+					InputBuffer = "";
+				} else if (key == Keys.Back) {
+					if (CursorPosition > 0) {
+						InputBuffer = InputBuffer.Remove(CursorPosition - 1, 1);
+						CursorPosition--;
+					}
+				} else {
+					InputBuffer = InputBuffer.Insert(CursorPosition, inp.ToString());
+					CursorPosition++;
+				}
+			} else {
+				if (key == Keys.T) {
+					IsClientTyping = true;
+				}
+			}
+		}
+
+		private void Junk() { }
+
+		public GLChatSystem() : base() {
 			// use junk method for the release callback, since we don't care about it.
 			listenLeft = new KeyListener(Keys.Left, OnLeftArrow, Junk);
 			listenRight = new KeyListener(Keys.Right, OnRightArrow, Junk);
-			listenUp = new KeyListener(Keys.Up, OnUpArrow, Junk);
-			listenDown = new KeyListener(Keys.Down, OnDownArrow, Junk);
+			//listenUp = new KeyListener(Keys.Up, OnUpArrow, Junk);
+			//listenDown = new KeyListener(Keys.Down, OnDownArrow, Junk);
 
-			onChat = onChatCallback;
-
-			typingMessageBuffer = "";
-			typingMessageDisplay = "";
-			typedMessageHistory = new List<string>();
-			cursorPos = 0;
-			historyPos = 0;
+			InputBuffer = "";
+			InputDisplay = "";
+			InputMessageHistory = new List<string>();
+			CursorPosition = 0;
+			HistoryPos = 0;
 			cursorBlinkClock = 0;
 		}
 
 		void OnLeftArrow() {
-			if (!isTypingMessage) return;
-			cursorPos--;
-			cursorPos = Math.Max(cursorPos, 0);
+			if (!IsClientTyping) return;
+			CursorPosition--;
+			CursorPosition = Math.Max(CursorPosition, 0);
 		}
 
 		void OnRightArrow() {
-			if (!isTypingMessage) return;
-			cursorPos++;
-			cursorPos = Math.Min(cursorPos, typingMessageBuffer.Length);
-		}
-
-		void OnUpArrow() { }
-
-		void OnDownArrow() { }
-
-		private void Junk() { }
-
-		public override void ReceivedMessage(string message) {
-			AddMessage(new ChatMessage { Text = message, TextColor = Color.White });
-		}
-
-		public void OnSendMessage(string message) {
-			onChat(message);
-		}
-
-		public void OnTextInput(object sender, TextInputEventArgs args) {
-			char inp = args.Character;
-			Keys key = args.Key;
-
-			if (isTypingMessage) {
-				if (key == Keys.Enter) {
-					OnSendMessage(typingMessageBuffer);
-					typingMessageBuffer = "";
-					isTypingMessage = false;
-					cursorPos = 0;
-				} else if (key == Keys.Escape) {
-					isTypingMessage = false;
-					typingMessageBuffer = "";
-				} else if (key == Keys.Back) {
-					if (cursorPos > 0) {
-						typingMessageBuffer = typingMessageBuffer.Remove(cursorPos - 1, 1);
-						cursorPos--;
-					}
-				} else {
-					typingMessageBuffer = typingMessageBuffer.Insert(cursorPos, inp.ToString());
-					cursorPos++;
-				}
-			} else {
-				if (key == Keys.T) {
-					isTypingMessage = true;
-				}
-			}
+			if (!IsClientTyping) return;
+			CursorPosition++;
+			CursorPosition = Math.Min(CursorPosition, InputBuffer.Length);
 		}
 
 		public override void Update(float delta) {
-			listenDown.Update();
-			listenUp.Update();
+			base.Update(delta);
+			//listenDown.Update();
+			//listenUp.Update();
 			listenLeft.Update();
 			listenRight.Update();
 
+			// add blinking cursor into string at proper position
 			cursorBlinkClock += delta;
 
 			if (cursorBlinkClock % 1.0 > 0.5) {
-				typingMessageDisplay = (typingMessageBuffer.Substring(0, cursorPos)) + "|" + (typingMessageBuffer.Substring(cursorPos));
+				InputDisplay = (InputBuffer.Substring(0, CursorPosition)) + "|" + (InputBuffer.Substring(CursorPosition));
 			} else {
-				typingMessageDisplay = typingMessageBuffer;
+				InputDisplay = InputBuffer;
 			}
 		}
 
-		public override void Draw(SpriteBatch sb) {
-			base.Draw(sb);
-
-			if (isTypingMessage) {
-				TextRenderer.Print(sb, typingMessageDisplay, new Vector2(4, 570), Color.LightGray);
+		public override void Draw(SpriteBatch sb, GraphicsDevice graphics) {
+			
+			base.Draw(sb, graphics);
+			int bottomScreen = 360 - 14;
+			if (IsClientTyping) {
+				TextRenderer.Print(sb, InputDisplay, new Vector2(4, bottomScreen), Color.LightGray);
 			}
 		}
 	}

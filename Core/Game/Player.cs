@@ -34,8 +34,9 @@ namespace RunGun.Core.Game
 		IFirearm EquippedGun { get; }
 
 		public Facing Facing { get; set; } = Facing.RIGHT;
-		// TODO: Constructor
-		public Player() {}
+		public Player() {
+			NextPosition = new Vector2(30, 30);
+		}
 		public void Kick() {
 			Console.WriteLine("GOT KICKED!");
 		}
@@ -46,6 +47,9 @@ namespace RunGun.Core.Game
 
 		public override void Update(float delta) {
 			base.Update(delta);
+
+			//Console.WriteLine(Position);
+
 			if (MovingLeft)  { Facing = Facing.LEFT; }
 			if (MovingRight) { Facing = Facing.RIGHT; }
 		}

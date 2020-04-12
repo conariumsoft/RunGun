@@ -35,7 +35,7 @@ namespace RunGun.Core.Utility
 		public void Update(float dt) {
 			timer += dt;
 
-			if (timer >= 1.0 / Interval) {
+			if (timer >= (1.0f / Interval) ) {
 				if (PreserveIntervalOvertime)
 					timer -= Interval;
 				else

@@ -10,12 +10,19 @@ namespace RunGun.Core.Game
 		void RemoveEntity(short id);
 	}
 
-	public interface IUpdateableRG
+	public interface IGameSystem
+	{
+		
+	}
+
+
+
+	public interface IUpdateComponent
 	{
 		void Update(float delta);
 	}
 
-	public interface IDrawableRG
+	public interface IRenderComponent
 	{
 		void Draw(SpriteBatch sb);
 	}

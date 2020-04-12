@@ -10,28 +10,28 @@ using System.Threading;
 using RunGun.Core.Utility;
 using RunGun.Core.Game;
 using System.Text;
+using RunGun.Server.Plugins;
 
 /* TODO: make server occasionally talk shit in chat
  * TODO: RCON system
  * TODO: Lua scriptable gamemodes
- * 
- * 
+ * TODO: further develop the plugin API
  */
 namespace RunGun.Server
 {
-
 	interface IPluginEventArgs {}
 
 	public delegate object[] LuaFunc(params object[] obj);
 
-	interface IPluggableServer
+	interface IPluginAPI
 	{
 		public event LuaFunc OnServerStart;
 		public event LuaFunc OnServerStop;
 		public event LuaFunc OnConnectRequested;
 		PluginManager Plugins { get; set; }
 	}
-	class Server : BaseServer, IGameController, IPluggableServer {
+	class Server : BaseServer, IGameController, IPluginAPI
+	{
 
 		#region Server Configuration Properties
 		public int MinimumThreadSleepTime { get; set; } = 8; // minimum time (ms) between each gametick.
@@ -139,13 +139,14 @@ namespace RunGun.Server
 			Send(user, header, data.ToArray());
 		}
 		private void DownloadLeaderboardLayout(User user) {
+			// TODO: design and implement leaderboard system
 			S_LeaderboardLayoutHeader header = new S_LeaderboardLayoutHeader {
 
 			};
 			List<S_LeaderboardLayoutSlice> data = new List<S_LeaderboardLayoutSlice>();
 
 			//foreach (var something in leaderboard) {
-				// TODO: figure out
+				
 			//}
 		}
 		private void DownloadExistingEntities(User user) {
@@ -176,7 +177,6 @@ namespace RunGun.Server
 		}
 		protected override void OnUserConnect(User user) {
 			base.OnUserConnect(user);
-			// TODO: add ip and port
 			Send(user, new S_ChatPacket(string.Format("[Server] connected to {0} ({1})", ServerName, ListeningEndpoint.ToString())));
 
 			GlobalMessage(user.Nickname + " joined.", ConsoleColor.Gray);
@@ -184,10 +184,13 @@ namespace RunGun.Server
 			DownloadLeaderboardLayout(user);
 			
 			SendToAllExcept(user, new S_PeerJoinPacket(user.NetworkID));
-			Player player = new Player();
-			player.UserNickname = user.Nickname;
-			player.UserGUID = user.NetworkID;
-			player.Color = GetRandomColor();
+
+			Player player = new Player() {
+				UserNickname = user.Nickname,
+				UserGUID = user.NetworkID,
+				Color = GetRandomColor(),
+			};
+			
 			DownloadExistingEntities(user);
 			SpawnEntity(player);
 			Send(user, new S_AssignPlayerIDPacket(player.EntityID));
@@ -204,13 +207,14 @@ namespace RunGun.Server
 
 			SendToAllExcept(user, new S_PeerLeftPacket(user.NetworkID));
 			SendToAllExcept(user, new S_DeleteEntityPacket(player.EntityID));
-			// TODO:
+
 			GlobalMessage(user.Nickname + " left.", ConsoleColor.Gray);
 			World.RemoveEntity(player);
 		}
 
 		void ChatListener(User user, C_ChatPacket packet) {
-			// TODO: Sanitize string?
+			// ? will chat string need sanitization later
+			// TODO: test if strings can break stuff by not being sanitized
 			GlobalMessage(user.Nickname + " : "+packet.Message, ConsoleColor.White);
 		}
 		void PingListener(User user, C_PingPacket packet) {
@@ -233,10 +237,13 @@ namespace RunGun.Server
 
 		#region Initialization Methods
 		private void LoadTestMap() {
+			Random rand = new Random();
 			World.levelGeometries = new List<LevelGeometry>() {
-				new LevelGeometry(new Vector2(0, 20), new Vector2(20, 600), new Color(255, 0, 0)),
-				new LevelGeometry(new Vector2(10, 500), new Vector2(1000, 40), new Color(0, 255, 128)),
-				new LevelGeometry(new Vector2(400, 400), new Vector2(20, 50), new Color(128, 0, 128)),
+				new LevelGeometry(new Vector2(0, 20), new Vector2(20, 300), new Color(255, 0, 0)),
+				new LevelGeometry(new Vector2(10, 300), new Vector2(500, 10), new Color(0, 255, 128)),
+				new LevelGeometry(new Vector2(200, 300), new Vector2(20, 100), new Color(128, 0, 128)),
+				new LevelGeometry(new Vector2(rand.Next(25, 310), rand.Next(20, 200)), new Vector2(20, 100), new Color(255, 0, 128)),
+				new LevelGeometry(new Vector2(rand.Next(20, 200), rand.Next(100, 300)), new Vector2(rand.Next(40, 80), rand.Next(20, 200)), new Color(64, 255, 64)),
 			};
 		}
 		#endregion
@@ -268,21 +275,25 @@ namespace RunGun.Server
 		}
 
 
+		S_GameStateHeader header;
+		List<S_GameStateSlice> states = new List<S_GameStateSlice>();
 		private void NetworkGameStateUpdate() {
 			var header = new S_GameStateHeader(World.physicsFrameIter);
 
-			List<S_GameStateSlice> states = new List<S_GameStateSlice>();
+			states.Clear();
+			//List<S_GameStateSlice> states = new List<S_GameStateSlice>();
 			// TODO: big optimization candidate
 			foreach (var ent in World.GetEntities()) {
 				if (ent is IPhysical phys) {
 					states.Add(new S_GameStateSlice {
 						EntityID = phys.EntityID,
-						NextX = phys.NextPosition.X, NextY = phys.NextPosition.Y,
-						VelocityX = phys.Velocity.X, VelocityY = phys.Velocity.Y
+						NextX = phys.NextPosition.X,
+						NextY = phys.NextPosition.Y,
+						VelocityX = phys.Velocity.X,
+						VelocityY = phys.Velocity.Y
 					});
 				}
 			}
-
 			SendToAll(header, states.ToArray());
 		}
 	}

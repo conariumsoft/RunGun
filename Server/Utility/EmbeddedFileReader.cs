@@ -6,9 +6,9 @@ using System.Text;
 
 namespace RunGun.Server.Utils
 {
-	public static class FileUtils
+	public static class EmbeddedFileReader
 	{
-		public static string ReadEmbedded(string filename) {
+		public static string Read(string filename) {
 			var assembly = Assembly.GetExecutingAssembly();
 
 			using (Stream stream = assembly.GetManifestResourceStream(filename))

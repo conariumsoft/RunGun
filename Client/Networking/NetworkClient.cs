@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace RunGun.Client.Networking
 {
-	class NetworkClient : IClient {
+	public class NetworkClient : IClient {
 		public bool IsConnected { get; private set; }
 		public bool IsConnecting { get; private set; }
 
@@ -55,19 +55,19 @@ namespace RunGun.Client.Networking
 			//udpClient.Close();
 		}
 
-		[Conditional("DEBUG")]
+		[Conditional("v")]
 		void DumpData(byte[] data) {
 			Console.Write("CI: ");
 			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0} ", data[i]);
+				Console.Write("{0:X2} ", data[i]);
 			}
 			Console.WriteLine("");
 		}
-		[Conditional("DEBUG")]
+		[Conditional("v")]
 		void DumpDataOut(byte[] data) {
 			Console.Write("CO: ");
 			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0} ", data[i]);
+				Console.Write("{0:X2} ", data[i]);
 			}
 			Console.WriteLine("");
 		}
@@ -105,7 +105,7 @@ namespace RunGun.Client.Networking
 			StartListeningThread();
 			IsConnecting = true;
 			Send(new C_ConnectRequestPacket(nickname));
-			
+			Console.WriteLine("Lets GO");
 		}
 		public void Disconnect() {
 			Send(new C_DisconnectPacket());

@@ -15,6 +15,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Game\Shit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Weapons.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Generic\CircularArray.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IGameSystem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\NetBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Protocol.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Rendering\ShapeRenderer.cs" />

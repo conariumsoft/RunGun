@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <None Remove="default-serverconf.lua" />
-    <None Remove="LuaPlugin\test.lua" />
+    <None Remove="Plugins\test.lua" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="LiveSharp" Version="1.2.5" />
     <PackageReference Include="NLua" Version="1.4.29" />
   </ItemGroup>
 
@@ -42,7 +43,6 @@
 
   <ItemGroup>
     <Folder Include="Game\" />
-    <Folder Include="Utility\" />
   </ItemGroup>
 
   <Import Project="..\Core\Core.projitems" Label="Shared" />

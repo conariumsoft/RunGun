@@ -55,7 +55,7 @@ namespace RunGun.Core.Game
 		void OnEntityCollide(Vector2 sep, Vector2 normal, ICollidable victim);
 	}
 
-	public abstract class Entity : IEntity, IUpdateableRG, IDrawableRG
+	public abstract class Entity : IEntity, IUpdateComponent, IRenderComponent
 	{
 		public bool Remove { get; set; }
 		public short EntityID { get; set; }
