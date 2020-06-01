@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Editor.MonoGameControls
+namespace MonoGameControls
 {
     public class MonoGameServiceProvider : IServiceProvider
     {

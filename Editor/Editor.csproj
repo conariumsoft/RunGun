@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <UseWPF>true</UseWPF>
+    <RootNamespace>RunGun.Editor</RootNamespace>
   </PropertyGroup>
   
   <ItemGroup>
@@ -16,12 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Content\monogame-logo.png" />
+    <Folder Include="Tools\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="Content\monogame-logo.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+  <Import Project="..\Core\Core.projitems" Label="Shared" />
+
+  <Import Project="..\Client\ClientS.projitems" Label="Shared" />
 </Project>

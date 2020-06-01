@@ -1,20 +1,15 @@
 ﻿using RunGun.Core.Utility;
 using RunGun.Server.Utils;
+using System.Diagnostics;
 using System.Net;
 
 namespace RunGun.Server
 {
 	class Program
 	{
-		private static void CreateDefaultConfiguration() {
-			// copy serverconf to folder if doesn't exist yet.
-			if (!System.IO.File.Exists("serverconf.lua")) {
-				var sw = System.IO.File.CreateText("serverconf.lua");
-				var data = EmbeddedFileReader.Read("RunGun.Server.LuaScripts.default-serverconf.lua");
-				sw.Write(data);
-				sw.Flush();
-				sw.Close();
-			}
+		[Conditional("DEBUG")]
+		private static void RuntimeTesting() {
+			Core.Networking.TypeSerializer.TestTypeRoundTrip();
 		}
 		private static void CreatePluginFolder() {
 			System.IO.Directory.CreateDirectory("plugins");
@@ -22,20 +17,24 @@ namespace RunGun.Server
 		private static void CreateLogsFolder() {
 			System.IO.Directory.CreateDirectory("logs");
 		}
-		private static void LoadConfig() {}
 
 		static void Main(string[] args) {
+			RuntimeTesting();
 			Logging.Out("Server Bootstrap...");
-			CreateDefaultConfiguration();
+			ServerConfiguration.CreateDefaultConfig();
 			CreatePluginFolder();
 			CreateLogsFolder();
 
-			LoadConfig();
+			ServerConfiguration config = ServerConfiguration.Load();
 
-			Server server = new Server(new IPEndPoint(IPAddress.Any, 22222)) {
-				MaxPlayers = 32,
-				ServerName = "Server MkI"
+			Server server = new Server() {
+				MinimumThreadSleepTime = config.MinimumThreadSlepTime,
+				GameStateTickRate = config.GameStateTickRate,
+				UsersTimeoutAfter = config.UsersTimeoutAfter,
+				MaxPlayers = config.MaxPlayers,
+				ServerName = config.ServerName,
 			};
+			server.BindTo(new IPEndPoint(IPAddress.Any, config.ListenPort));
 
 			int exitCode = server.Run();
 			Logging.Out("Server exited with code "+exitCode);

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input.Touch;
 using RunGun.Client;
 using RunGun.Client.Input;
 
@@ -12,8 +13,13 @@ namespace RunGun.AndroidClient
 	class AndroidClient : BaseClient {
 
 		public AndroidClient() : base() {
+			GraphicsDeviceManager.IsFullScreen = true;
 			Chat = new AndroidChatManager();
 			Input = new TouchInput();
+			TouchPanel.DisplayOrientation = DisplayOrientation.LandscapeLeft;
+			TouchPanel.DisplayWidth = GameConstants.BaseWidth;
+			TouchPanel.DisplayHeight = GameConstants.BaseHeight;
+			TouchPanel.EnableMouseTouchPoint = true;
 		}
 
 		protected override void Initialize() {
@@ -40,7 +46,10 @@ namespace RunGun.AndroidClient
 
 		protected override void DrawGameLayer() {
 			base.DrawGameLayer();
+		}
 
+		protected override void DrawUILayer() {
+			base.DrawUILayer();
 			Input.Draw(SpriteBatch, GraphicsDevice);
 		}
 	}

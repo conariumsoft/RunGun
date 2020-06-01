@@ -24,30 +24,16 @@ namespace RunGun.Server.Networking
 
 		public event Listener OnUserMessage;
 
-		public BaseServer(IPEndPoint endpoint) {
-			ListeningEndpoint = endpoint;
+		public BaseServer() {
+			
 
 			ConnectedUsers = new List<User>();
 			messageQueue = new Queue<UdpReceiveResult>();
+		}
+
+		public virtual void BindTo(IPEndPoint endpoint) {
+			ListeningEndpoint = endpoint;
 			udpClient = new UdpClient(endpoint);
-		}
-
-		[Conditional("v")]
-		void DumpDataOut(byte[] data) {
-			Console.Write("SO: ");
-			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0:X2}", data[i]);
-			}
-			Console.WriteLine("");
-		}
-
-		[Conditional("v")]
-		void DumpData(byte[] data) {
-			Console.Write("SI: ");
-			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0:X2}", data[i]);
-			}
-			Console.WriteLine("");
 		}
 
 		private User GetUserByIP(IPEndPoint endpoint) {
@@ -60,10 +46,9 @@ namespace RunGun.Server.Networking
 		}
 
 		public void Send<T>(INetworkPeer peer, T packet) where T : IPacket {
-			byte[] data = ByteUtil.Serialize(packet);
-			DumpDataOut(data);
+			byte[] data = ClassSerializer.Serialize(packet);
+			ByteUtil.DumpNum(data);
 			try {
-				
 				udpClient.Send(data, data.Length, peer.IPAddress);
 			} catch (SocketException exception) {
 				Console.WriteLine("ERR: "+ exception.ToString());
@@ -84,24 +69,26 @@ namespace RunGun.Server.Networking
 			}
 		}
 		public void Send<T, U>(INetworkPeer peer, T packet, U[] slices) where T : IPacketHeader where U : IDataSlice {
-			int headerSize = Marshal.SizeOf(typeof(T));
-			int sliceSize = Marshal.SizeOf(typeof(U));
+			//int headerSize = Marshal.SizeOf(typeof(T));
+			//int sliceSize = Marshal.SizeOf(typeof(U));
+			int headerSize = ClassSerializer.GetProfile(typeof(T)).BufferLength;
+			int sliceSize = ClassSerializer.GetProfile(typeof(U)).BufferLength;
 			byte[] datagram = new byte[headerSize + (sliceSize * slices.Length)];
 
-			byte[] header = ByteUtil.Serialize(packet);
+			byte[] header = ClassSerializer.Serialize(packet);
 			ByteUtil.Put(0, header, ref datagram);
 
 			for (int i = 0; i< slices.Length; i++) {
-				byte[] slicedata = ByteUtil.Serialize(slices[i]);
+				byte[] slicedata = ClassSerializer.Serialize(slices[i]);
 				ByteUtil.Put(headerSize + (i * sliceSize), slicedata, ref datagram);
 			}
-			DumpDataOut(datagram);
+
+			ByteUtil.DumpNum(datagram);
 			try {
 				udpClient.Send(datagram, datagram.Length, peer.IPAddress);
 			} catch (SocketException exception) {
 				Console.WriteLine("Exception:" + exception.ToString());
 
-				
 				// Error codes:
 				// https://docs.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
 			}
@@ -119,13 +106,13 @@ namespace RunGun.Server.Networking
 				}
 			}
 		}
-		public void AddListener<T>(Protocol code, Callback<T> method) where T : IPacket {
+		public void AddListener<T>(Protocol code, Callback<T> method) where T : IPacket, new() {
 			OnUserMessage += (sender, bytedata) => {
 				if (bytedata[0] == (byte)code) {
 					T payload;
 
 					try {
-						payload = ByteUtil.Deserialize<T>(bytedata);
+						payload = ClassSerializer.Deserialize<T>(bytedata);
 					} catch(Exception) {
 						return;
 					}
@@ -134,12 +121,12 @@ namespace RunGun.Server.Networking
 			};
 		}
 		public void AddListener<T, U>(Protocol code, ListCallback<T, U> method)
-			where T : IPacketHeader
-			where U : IDataSlice {
+			where T : IPacketHeader, new()
+			where U : IDataSlice, new() {
 			OnUserMessage += (sender, bytedata) => {
 				if (bytedata[0] == (byte)code) {
-					int headerSize = Marshal.SizeOf(typeof(T));
-					int sliceSize = Marshal.SizeOf(typeof(U));
+					int headerSize = ClassSerializer.GetProfile(typeof(T)).BufferLength;
+					int sliceSize = ClassSerializer.GetProfile(typeof(U)).BufferLength;
 					int numSlices = (bytedata.Length - headerSize) / sliceSize;
 					byte[] headerData = new byte[headerSize];
 					Array.Copy(bytedata, 0, headerData, 0, headerSize);
@@ -160,7 +147,7 @@ namespace RunGun.Server.Networking
 						U slice;
 
 						try {
-							slice = ByteUtil.Deserialize<U>(sliceData);
+							slice = ClassSerializer.Deserialize<U>(sliceData);
 						} catch(Exception) {
 							return;
 						}
@@ -199,7 +186,7 @@ namespace RunGun.Server.Networking
 			isThreadRunning = false;
 		}
 
-		protected virtual (bool accept, string reason) OnConnectingCheck(INetworkPeer peer, C_ConnectRequestPacket packet) {
+		protected virtual (bool accept, string reason) OnConnectingCheck(INetworkPeer peer, CConnectRequest packet) {
 			foreach(User user in ConnectedUsers) {
 				if (user.Nickname == packet.Nickname) {
 					return (false, "Nickname already taken.");
@@ -219,28 +206,32 @@ namespace RunGun.Server.Networking
 		public void ReadNextPacket() {
 			var recv = messageQueue.Dequeue();
 
-			DumpData(recv.Buffer);
+			ByteUtil.DumpNum(recv.Buffer);
 
 			if (recv.Buffer[0] == (byte)Protocol.C_Connect) {
+				
 				var peer = new NetworkPeer() { IPAddress = recv.RemoteEndPoint };
-				C_ConnectRequestPacket packet;
+				CConnectRequest packet;
 
 				try {
-					packet = ByteUtil.Deserialize<C_ConnectRequestPacket>(recv.Buffer);
+					packet = ClassSerializer.Deserialize<CConnectRequest>(recv.Buffer);
 				} catch(Exception e) {
 					// packet was mutated, ignore and move on.
-					return;
+					//return;
+					throw e;
 				}
+				
 				(bool accept, string reason) = OnConnectingCheck(peer, packet);
 				if (accept == true) {
-					User user = new User();
-					user.NetworkID = Guid.NewGuid();
-					user.Nickname = packet.Nickname;
-					user.IPAddress = peer.IPAddress;
-					Send(user, new S_ConnectAcceptPacket(user.NetworkID));
+					User user = new User() {
+						NetworkID = Guid.NewGuid(),
+						Nickname = packet.Nickname,
+						IPAddress = peer.IPAddress,
+					};
+					Send(user, new SPConnectAccept(user.NetworkID));
 					OnUserConnect(user);
 				} else {
-					Send(peer, new S_ConnectDenyPacket(reason));
+					Send(peer, new SPConnectDeny(reason));
 				}
 
 				//OnUserConnectRequest?.Invoke(this, args);

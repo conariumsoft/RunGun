@@ -8,19 +8,31 @@ using System.Text;
 
 namespace RunGun.Core
 {
-	public class LevelGeometry : IRenderComponent
+	public interface IMapInstance
 	{
-		public Vector2 Position;
-		public Vector2 Size;
-		public Color Color;
 
+	}
+	public interface ILevelGeometry : IRenderComponent
+	{
+		public Vector2 Position { get; set; }
+		public Vector2 Size { get; set; }
+		public Color Color { get; set; }
+	}
+
+	[Serializable]
+	public class LevelGeometry : ILevelGeometry, IRenderComponent
+	{
+		public Vector2 Position { get; set; }
+		public Vector2 Size { get; set; }
+		public Color Color { get; set; }
+
+		public LevelGeometry() { }
 		public LevelGeometry(Vector2 pos, Vector2 sz, Color col) {
 			Position = pos;
 			Size = sz;
 			Color = col;
 		}
 
-		
 		public Vector2 GetCenter() {
 			return Position + (Size / 2);
 		}

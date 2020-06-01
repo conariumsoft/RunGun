@@ -22,18 +22,19 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Editor.MonoGameControls
+namespace MonoGameControls
 {
     public sealed class MonoGameContentControl : ContentControl, IDisposable
     {
         private static readonly MonoGameGraphicsDeviceService _graphicsDeviceService = new MonoGameGraphicsDeviceService();
         private int _instanceCount;
-        private IMonoGameViewModel _viewModel;
+        public IMonoGameViewModel ViewModel;
         private readonly GameTime _gameTime = new GameTime();
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private D3DImage _direct3DImage;
@@ -41,6 +42,7 @@ namespace Editor.MonoGameControls
         private SharpDX.Direct3D9.Texture _renderTargetD3D9;
         private bool _isFirstLoad = true;
         private bool _isInitialized;
+        public System.Windows.Point MousePos;
 
         public MonoGameContentControl()
         {
@@ -52,12 +54,12 @@ namespace Editor.MonoGameControls
             Unloaded += OnUnloaded;
             DataContextChanged += (sender, args) =>
             {
-                _viewModel = args.NewValue as IMonoGameViewModel;
+                ViewModel = args.NewValue as IMonoGameViewModel;
 
-                if (_viewModel != null)
-                    _viewModel.GraphicsDeviceService = _graphicsDeviceService;
+                if (ViewModel != null)
+                    ViewModel.GraphicsDeviceService = _graphicsDeviceService;
             };
-            SizeChanged += (sender, args) => _viewModel?.SizeChanged(sender, args);
+            SizeChanged += (sender, args) => ViewModel?.SizeChanged(sender, args);
         }
 
         public static GraphicsDevice GraphicsDevice => _graphicsDeviceService?.GraphicsDevice;
@@ -75,7 +77,7 @@ namespace Editor.MonoGameControls
             if (IsDisposed)
                 return;
 
-            _viewModel?.Dispose();
+            ViewModel?.Dispose();
             _renderTarget?.Dispose();
             _renderTargetD3D9?.Dispose();
             _instanceCount--;
@@ -93,13 +95,13 @@ namespace Editor.MonoGameControls
 
         protected override void OnGotFocus(RoutedEventArgs e)
         {
-            _viewModel?.OnActivated(this, EventArgs.Empty);
+            ViewModel?.OnActivated(this, EventArgs.Empty);
             base.OnGotFocus(e);
         }
 
         protected override void OnLostFocus(RoutedEventArgs e)
         {
-            _viewModel?.OnDeactivated(this, EventArgs.Empty);
+            ViewModel?.OnDeactivated(this, EventArgs.Empty);
             base.OnLostFocus(e);
         }
 
@@ -111,14 +113,14 @@ namespace Editor.MonoGameControls
            if (Application.Current.MainWindow == null)
               throw new InvalidOperationException("The application must have a MainWindow");
 
-            Application.Current.MainWindow.Closing += (sender, args) => _viewModel?.OnExiting(this, EventArgs.Empty);
+            Application.Current.MainWindow.Closing += (sender, args) => ViewModel?.OnExiting(this, EventArgs.Empty);
             Application.Current.MainWindow.ContentRendered += (sender, args) =>
             {
                 if (_isFirstLoad)
                 {
                     _graphicsDeviceService.StartDirect3D(Application.Current.MainWindow);
-                    _viewModel?.Initialize();
-                    _viewModel?.LoadContent();
+                    ViewModel?.Initialize();
+                    ViewModel?.LoadContent();
                     _isFirstLoad = false;
                 }
             };
@@ -151,7 +153,7 @@ namespace Editor.MonoGameControls
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            _viewModel?.UnloadContent();
+            ViewModel?.UnloadContent();
 
             if (_graphicsDeviceService != null)
             {
@@ -225,6 +227,10 @@ namespace Editor.MonoGameControls
 
         private void OnRender(object sender, EventArgs e)
         {
+            // SHITPOINT
+            //System.Windows.Point point = Mouse.GetPosition(this);
+            //MapEditor.LastMousePosition = MapEditor.MousePosition;
+            //MapEditor.MousePosition = new Vector2((float)point.X, (float)point.Y); 
             _gameTime.ElapsedGameTime = _stopwatch.Elapsed;
             _gameTime.TotalGameTime += _gameTime.ElapsedGameTime;
             _stopwatch.Restart();
@@ -243,8 +249,8 @@ namespace Editor.MonoGameControls
                         GraphicsDevice.SetRenderTarget(_renderTarget);
                         SetViewport();
 
-                        _viewModel?.Update(_gameTime);
-                        _viewModel?.Draw(_gameTime);
+                        ViewModel?.Update(_gameTime);
+                        ViewModel?.Draw(_gameTime);
 
                         GraphicsDevice.Flush();
                         _direct3DImage.AddDirtyRect(new Int32Rect(0, 0, (int)ActualWidth, (int)ActualHeight));

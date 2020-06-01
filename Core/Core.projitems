@@ -10,14 +10,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Game\Bullet.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Game\GameWorld.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)World\GameWorld.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Leaderboard.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Shit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Weapons.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Generic\CircularArray.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IGameSystem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\ClassSerializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\NetBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Protocol.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\TypeSerializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Rendering\ShapeRenderer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Rendering\TextRenderer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utility\Logging.cs" />
@@ -25,16 +27,18 @@
     <Compile Include="$(MSBuildThisFileDirectory)Utility\StringUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utility\Crypto.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Entity.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Game\LevelGeometry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)World\LevelGeometry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PacketDescriptions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Physics\CollisionSolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Physics\PhysicsProperties.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utility\Tasks.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)World\Map.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)World\MapObject.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Game\Entities\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Entities\" />
     <Folder Include="$(MSBuildThisFileDirectory)Game\Systems\" />
-    <Folder Include="$(MSBuildThisFileDirectory)Game\Weapons\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Weapons\" />
   </ItemGroup>
 </Project>

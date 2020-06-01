@@ -32,7 +32,7 @@ namespace RunGun.AndroidClient
 			game.Nickname = "androidpl";
 			SetContentView((View)game.Services.GetService(typeof(View)));
 
-			game.ConnectToServer(new IPEndPoint(IPAddress.Parse("192.168.0.2"), 22222));
+			game.ConnectToServer(new IPEndPoint(IPAddress.Parse("174.104.30.161"), 22222));
 
 			game.Run();
 		}

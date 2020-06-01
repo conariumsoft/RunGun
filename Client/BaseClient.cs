@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input.Touch;
 using RunGun.Client.Input;
 using RunGun.Client.Networking;
 using RunGun.Client.Rendering;
@@ -35,13 +36,16 @@ namespace RunGun.Client
 		Disconnected,
 		Other
 	}
-	
-	public abstract class BaseClient : Game, IGameController
+
+	public static class GameConstants
 	{
 		public const float PreferredAspectRatio = 16 / (float)9;
 		public const int   BaseWidth = 640;
 		public const int   BaseHeight = 360;
-
+	}
+	
+	public abstract class BaseClient : Game, IGameController
+	{
 		#region Game subsystem classes
 		protected NetworkClient Client { get; }
 		protected FrameCounter  FrameCounter { get; }
@@ -81,20 +85,20 @@ namespace RunGun.Client
 			float scale;
 			
 			// output is taller than wider, bars on top/bottom
-			if (clientAspect <= PreferredAspectRatio) {
+			if (clientAspect <= GameConstants.PreferredAspectRatio) {
 				
-				int presentHeight = (int)((Window.ClientBounds.Width / PreferredAspectRatio) + 0.5f);
+				int presentHeight = (int)((Window.ClientBounds.Width / GameConstants.PreferredAspectRatio) + 0.5f);
 				int barHeight = (Window.ClientBounds.Height - presentHeight) / 2;
 
 				Camera.ViewportOffset = new Vector2(0, barHeight);
-				scale = Window.ClientBounds.Height /(float) BaseHeight;
+				scale = Window.ClientBounds.Height /(float) GameConstants.BaseHeight;
 			// output is wider than it is tall, put bars left/right
 			} else {
-				int presentWidth = (int)((Window.ClientBounds.Height * PreferredAspectRatio) + 0.5f);
+				int presentWidth = (int)((Window.ClientBounds.Height * GameConstants.PreferredAspectRatio) + 0.5f);
 				int barWidth = (Window.ClientBounds.Width - presentWidth) / 2;
 
 				Camera.ViewportOffset = new Vector2(barWidth, 0);
-				scale = Window.ClientBounds.Width /(float) BaseWidth;
+				scale = Window.ClientBounds.Width /(float) GameConstants.BaseWidth;
 			}
 			Camera.Zoom = scale;
 			Camera.ViewportHeight = GraphicsDevice.Viewport.Height;
@@ -127,22 +131,22 @@ namespace RunGun.Client
 			CurrentGameState = GameState.MainMenu;
 
 			#region Listener Bindings
-			Client.AddListener<S_ConnectAcceptPacket>(Protocol.S_ConnectOK, OnServerAccept);
-			Client.AddListener<S_ConnectDenyPacket>(Protocol.S_ConnectDeny, OnServerDeny);
-			Client.AddListener<S_ChatPacket>(Protocol.S_Chat, OnServerChatMsg);
-			Client.AddListener<S_AssignPlayerIDPacket>(Protocol.S_AssignPlayerID, OnAssignedPlayerID);
-			Client.AddListener<S_PingReplyPacket>(Protocol.S_PingReply, OnServerPingReply);
-			Client.AddListener<S_AddBulletPacket>(Protocol.S_AddBullet, OnAddBullet);
-			Client.AddListener<S_AddPlayerPacket>(Protocol.S_AddPlayer, OnAddPlayer);
-			Client.AddListener<S_DeleteEntityPacket>(Protocol.S_DeleteEntity, OnDeleteEntity);
+			Client.AddListener<SPConnectAccept>(Protocol.S_ConnectOK, OnServerAccept);
+			Client.AddListener<SPConnectDeny>(Protocol.S_ConnectDeny, OnServerDeny);
+			Client.AddListener<SPChat>(Protocol.S_Chat, OnServerChatMsg);
+			Client.AddListener<SPAssignPlayerID>(Protocol.S_AssignPlayerID, OnAssignedPlayerID);
+			Client.AddListener<SPPingReply>(Protocol.S_PingReply, OnServerPingReply);
+			Client.AddListener<SPAddBullet>(Protocol.S_AddBullet, OnAddBullet);
+			Client.AddListener<SPAddPlayer>(Protocol.S_AddPlayer, OnAddPlayer);
+			Client.AddListener<SPDeleteEntity>(Protocol.S_DeleteEntity, OnDeleteEntity);
 			Client.AddListener
-				<S_LeaderboardLayoutHeader, S_LeaderboardLayoutSlice>
+				<SLeaderboardLayoutHeader, SLeaderboardLayoutSlice>
 				(Protocol.S_LeaderboardLayout, OnLeaderboardLayout);
 			Client.AddListener
-				<S_GameStateHeader, S_GameStateSlice>
+				<SGameStateHeader, SGameStateSlice>
 				(Protocol.S_GameState, OnGameStateUpdate);
 			Client.AddListener
-				<S_MapHeader, S_MapSlice>
+				<SMapHeader, SMapSlice>
 				(Protocol.S_MapData, OnReceiveMapData);
 			#endregion
 
@@ -153,33 +157,33 @@ namespace RunGun.Client
 		}
 
 		#region Listener Methods (Network Bindings)
-		private void OnServerAccept(S_ConnectAcceptPacket packet) {
+		private void OnServerAccept(SPConnectAccept packet) {
 
 		}
-		private void OnServerDeny(S_ConnectDenyPacket packet) {
+		private void OnServerDeny(SPConnectDeny packet) {
 
 		}
-		private void OnServerChatMsg(S_ChatPacket packet) {
+		private void OnServerChatMsg(SPChat packet) {
 			Chat.AddMessage(new ChatMessage() {
 				Text = packet.Message,
 				TextColor = Color.White,
 			});
 		}
-		private void OnAssignedPlayerID(S_AssignPlayerIDPacket packet) {
+		private void OnAssignedPlayerID(SPAssignPlayerID packet) {
 			receivedPID = true;
 			ourPID = packet.PlayerID;
 		}
-		private void OnServerPing(S_PingPacket packet) {
-			Client.Send(new C_PingReplyPacket());
+		private void OnServerPing(SPPing packet) {
+			Client.Send(new CPingReply());
 			pingClock = 0;
 		}
-		private void OnServerPingReply(S_PingReplyPacket packet) {
+		private void OnServerPingReply(SPPingReply packet) {
 			ping = pingClock;
 			Console.WriteLine("Ping: " + ping);
 			keepAlive = 0;
 
 		}
-		private void OnGameStateUpdate(S_GameStateHeader header, List<S_GameStateSlice> slices) {
+		private void OnGameStateUpdate(SGameStateHeader header, List<SGameStateSlice> slices) {
 
 			int physicsFrame = World.physicsFrameIter;
 			World.physicsFrameIter = header.PhysicsStep;
@@ -187,35 +191,40 @@ namespace RunGun.Client
 			// grab each entity in the world
 			// and make a dataslice for their physical state
 			// send the batch off to clients to process
-			foreach (S_GameStateSlice slice in slices) {
+			foreach (SGameStateSlice slice in slices) {
 				if (World.HasEntity(slice.EntityID)) {
 					IPhysical ent = World.GetEntity(slice.EntityID) as IPhysical;
 
 					// if state implements Position, make sure to add here
 					ent.NextPosition = new Vector2(slice.NextX, slice.NextY);
 					ent.Velocity = new Vector2(slice.VelocityX, slice.VelocityY);
-
+					
 					for (int i = header.PhysicsStep; i < physicsFrame; i++) {
-						if (ent is Player player && player.EntityID == ourPID) {
+						if (ent is Player player) {
+							player.Facing =  (Facing) slice.Flag0;
+							player.Looking = (Looking)slice.Flag1;
+							if (player.EntityID == ourPID) {
 
-							var input = InputHistory.Get(i);
-							player.MovingLeft = input.Left;
-							player.MovingRight = input.Right;
-							player.Jumping = input.Jump;
-							player.LookingDown = input.Down;
-							player.LookingUp = input.Up;
-							//player.Shooting = input.Shoot;
+								var input = InputHistory.Get(i);
+								player.MovingLeft = input.Left;
+								player.MovingRight = input.Right;
+								player.Jumping = input.Jump;
+								player.LookingDown = input.Down;
+								player.LookingUp = input.Up;
+							}
 						}
 						World.ProcessEntityPhysics(ent, PhysicsProperties.PHYSICS_TIMESTEP);
 					}
 				}
 			}
 		}
-		private void OnLeaderboardLayout(S_LeaderboardLayoutHeader header, List<S_LeaderboardLayoutSlice> slices) {
+		private void OnLeaderboardLayout(SLeaderboardLayoutHeader header, List<SLeaderboardLayoutSlice> slices) {
 
 		}
-		private void OnReceiveMapData(S_MapHeader header, List<S_MapSlice> slices) {
-			foreach (S_MapSlice slice in slices) {
+		private void OnReceiveMapData(SMapHeader header, List<SMapSlice> slices) {
+			
+			foreach (SMapSlice slice in slices) {
+				Console.WriteLine("Slice {0} {1} {2} {3}", slice.X, slice.Y, slice.Width, slice.Height);
 				World.levelGeometries.Add(new LevelGeometry(
 					new Vector2(slice.X, slice.Y),
 					new Vector2(slice.Width, slice.Height),
@@ -223,7 +232,7 @@ namespace RunGun.Client
 				));
 			}
 		}
-		private void OnAddPlayer(S_AddPlayerPacket packet) {
+		private void OnAddPlayer(SPAddPlayer packet) {
 			Player player = new Player() {
 				EntityID = packet.EntityID,
 				UserNickname = packet.Nickname,
@@ -231,7 +240,7 @@ namespace RunGun.Client
 			};
 			World.AddEntity(player);
 		}
-		private void OnAddBullet(S_AddBulletPacket packet) {
+		private void OnAddBullet(SPAddBullet packet) {
 			Bullet bullet = new Bullet() {
 				Direction = packet.Direction,
 				CreatorID = packet.CreatorID,
@@ -239,14 +248,14 @@ namespace RunGun.Client
 			};
 			World.AddEntity(bullet);
 		}
-		private void OnDeleteEntity(S_DeleteEntityPacket packet) {
+		private void OnDeleteEntity(SPDeleteEntity packet) {
 			World.RemoveEntity(packet.EntityID);
 		}
 		#endregion
 
 		private void PingServer() {
 			if (Client.IsConnected)
-				Client.Send(new C_PingPacket());
+				Client.Send(new CPing());
 		}
 
 		private void SendInputState() {
@@ -258,18 +267,20 @@ namespace RunGun.Client
 				return;
 			}
 			Player player = World.GetEntity(ourPID) as Player;
-			var packet = new C_InputStatePacket(player.MovingLeft, player.MovingRight, player.Jumping, player.Shooting, player.LookingUp, player.LookingDown);
+			var packet = new CInputState(player.MovingLeft, player.MovingRight, player.Jumping, player.Shooting, player.LookingUp, player.LookingDown);
 
 			Client.Send(packet);
 		}
 
 		public virtual void ConnectToServer(IPEndPoint endpoint) {
-			Client.Connect(endpoint, Nickname);
+			bool result = Client.Connect(endpoint, Nickname);
+
+
 		}
 
 		public void OnLocalChatMessage(string message) {
 
-			Client.Send(new C_ChatPacket(message));
+			Client.Send(new CChat(message));
 		}
 
 		#region Monogame Overrides (Init, LoadContent, Update, Draw)

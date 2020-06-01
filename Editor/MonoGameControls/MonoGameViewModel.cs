@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Windows;
+using Editor;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Editor.MonoGameControls
+namespace MonoGameControls
 {
     public interface IMonoGameViewModel : IDisposable
     {
@@ -22,6 +23,7 @@ namespace Editor.MonoGameControls
         void SizeChanged(object sender, SizeChangedEventArgs args);
     }
 
+   
     public class MonoGameViewModel : ViewModel, IMonoGameViewModel
     {
         public MonoGameViewModel()
@@ -44,14 +46,14 @@ namespace Editor.MonoGameControls
             Services.AddService(GraphicsDeviceService);
             Content = new ContentManager(Services) { RootDirectory = "Content" };
         }
-
         public virtual void LoadContent() { }
         public virtual void UnloadContent() { }
         public virtual void Update(GameTime gameTime) { }
-        public virtual void Draw(GameTime gameTime) { }
+        public virtual void Draw(GameTime gameTime) {}
         public virtual void OnActivated(object sender, EventArgs args) { }
         public virtual void OnDeactivated(object sender, EventArgs args) { }
         public virtual void OnExiting(object sender, EventArgs args) { }
         public virtual void SizeChanged(object sender, SizeChangedEventArgs args) { }
+
     }
 }

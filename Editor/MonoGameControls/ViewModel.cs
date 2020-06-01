@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Editor
+namespace MonoGameControls
 {
     public class ViewModel : INotifyPropertyChanged
     {

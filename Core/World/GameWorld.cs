@@ -75,7 +75,7 @@ namespace RunGun.Core
 			if (entity is IEntityCollidable ec) {
 				for (int index = 0; index < entities.Count; index++) {
 					ICollidable otherEntity = entities[index] as ICollidable;
-					if (!ec.Equals(otherEntity))
+					if (!ec.Equals(otherEntity) && ec.GetType() != otherEntity.GetType())
 						CollisionSolver.SolveEntityAgainstEntity(ec, otherEntity);
 				}
 			} 

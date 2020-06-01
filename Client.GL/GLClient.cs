@@ -23,7 +23,7 @@ namespace RunGun.GLClient
 		}
 
 		public void OnPlayerSendChat(string str) {
-			Client.Send(new C_ChatPacket(str));
+			Client.Send(new CChat(str));
 		}
 
 		protected override void Initialize() {

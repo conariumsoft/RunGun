@@ -8,10 +8,21 @@ using System.Text;
 
 namespace RunGun.Core.Game
 {
-	public enum Facing { LEFT, RIGHT }
+	public enum Facing : byte { Left = 1, Right = 2 }
+	public enum Looking : byte { Forward = 0, Up = 1, Down = 2}
+
+	public enum MyEnum
+	{
+		ONE = 1,
+		TWO = 2,
+		THREE = 3,
+		FOUR = 4
+	}
+
 
 	public class Player : PhysicalEntity, ILiving, ICollidable
 	{
+
 		private const float walkAccelleration = 1000;
 		private const float maxWalkspeed = 200;
 		private const float jumpPower = 450;
@@ -33,7 +44,8 @@ namespace RunGun.Core.Game
 
 		IFirearm EquippedGun { get; }
 
-		public Facing Facing { get; set; } = Facing.RIGHT;
+		public Facing Facing { get; set; } = Facing.Right;
+		public Looking Looking { get; set; } = Looking.Forward;
 		public Player() {
 			NextPosition = new Vector2(30, 30);
 		}
@@ -50,9 +62,15 @@ namespace RunGun.Core.Game
 
 			//Console.WriteLine(Position);
 
-			if (MovingLeft)  { Facing = Facing.LEFT; }
-			if (MovingRight) { Facing = Facing.RIGHT; }
+			if (MovingLeft)  { Facing = Facing.Left;  }
+			if (MovingRight) { Facing = Facing.Right; }
+
+			if (LookingDown) { Looking = Looking.Down; }
+			if (LookingUp)   { Looking = Looking.Up;   }
+			
 		}
+
+
 
 		public void OnCollide(Vector2 separation, Vector2 normal) {
 			//base.OnCollide(separation, normal);
@@ -100,24 +118,23 @@ namespace RunGun.Core.Game
 		public override void Draw(SpriteBatch sb) {
 			base.Draw(sb);
 			ShapeRenderer.Rect(sb, Color, GetDrawPosition(), BoundingBox * 2);
-
+			ShapeRenderer.Rect(sb, Color, (int)Position.X, (int)Position.Y, (int)BoundingBox.X, (int)BoundingBox.Y);
+			Looking = Looking.Forward;
 			float rotation = 0;
-
-
+			
 			if (LookingDown) {
 				rotation = (float)Math.PI;
 			}
 				
-
 			if (LookingUp) {
-
+				
 			}
 
-			if (Facing == Facing.RIGHT) {
+			if (Facing == Facing.Right) {
 				ShapeRenderer.Rect(sb, Color.DarkBlue, GetDrawPosition() + new Vector2(BoundingBox.X*2, 0), new Vector2(30, 10));
 			}
 
-			if (Facing == Facing.LEFT) {
+			if (Facing == Facing.Left) {
 				ShapeRenderer.Rect(sb, Color.DarkBlue, GetDrawPosition()-new Vector2(30, 0), new Vector2(30, 10));
 			}
 
@@ -131,7 +148,7 @@ namespace RunGun.Core.Game
 				return BulletDirection.UP;
 			} else if (LookingDown) {
 				return BulletDirection.DOWN;
-			} else if (Facing == Facing.LEFT) {
+			} else if (Facing == Facing.Left) {
 				return BulletDirection.LEFT;
 			}
 			return BulletDirection.RIGHT;
@@ -171,11 +188,13 @@ namespace RunGun.Core.Game
 					xImp = 15;
 				}
 				Velocity -= new Vector2(xImp, yImp);
-
 			}
 		}
 
-		public override void ClientSideUpdate(IGameController gc, float dt) {}
+
+		public override void ClientSideUpdate(IGameController gc, float dt) {
+			
+		}
 		public bool IsDead() { return false; }
 		public void Kill() {}
 	}

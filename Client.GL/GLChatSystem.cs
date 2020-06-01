@@ -21,10 +21,10 @@ namespace RunGun.GLClient
 		// LUL @MICROCOCK
 		KeyListener listenLeft;
 		KeyListener listenRight;
-		KeyListener listenUp;
-		KeyListener listenDown;
+		//KeyListener listenUp;
+		//KeyListener listenDown;
 
-		Action<string> onChat;
+		//Action<string> onChat;
 
 		double cursorBlinkClock;
 
@@ -100,11 +100,9 @@ namespace RunGun.GLClient
 			// add blinking cursor into string at proper position
 			cursorBlinkClock += delta;
 
-			if (cursorBlinkClock % 1.0 > 0.5) {
-				InputDisplay = (InputBuffer.Substring(0, CursorPosition)) + "|" + (InputBuffer.Substring(CursorPosition));
-			} else {
-				InputDisplay = InputBuffer;
-			}
+			InputDisplay = cursorBlinkClock % 1.0 > 0.5
+				? (InputBuffer.Substring(0, CursorPosition)) + "|" + (InputBuffer.Substring(CursorPosition))
+				: InputBuffer;
 		}
 
 		public override void Draw(SpriteBatch sb, GraphicsDevice graphics) {

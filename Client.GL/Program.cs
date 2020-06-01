@@ -19,11 +19,16 @@ namespace RunGun.GLClient
              * read this https://steamworks.github.io/installation/
              */
 
-            string ip = "127.0.0.1";
+         //   if (args.Length < 1) {
+           //     Console.Write("Please provide a username...");
+           //     return;
+           // }
+
+            string ip = "174.104.30.161";
             int port = 22222;
             Thread.Sleep(500);
             using (GLClient game = new GLClient()) {
-                game.Nickname = "glplayer";
+                game.Nickname = "glclient";//args[0];
                 game.ConnectToServer(new IPEndPoint(IPAddress.Parse(ip), port));
                 game.Run();
             }

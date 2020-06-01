@@ -9,7 +9,6 @@ using System.Net;
 using System.Threading;
 using RunGun.Core.Utility;
 using RunGun.Core.Game;
-using System.Text;
 using RunGun.Server.Plugins;
 
 /* TODO: make server occasionally talk shit in chat
@@ -77,10 +76,10 @@ namespace RunGun.Server
 		}
 
 		public void RemoveEntity(short EntityID) {
-			SendToAll(new S_DeleteEntityPacket(EntityID));
+			SendToAll(new SPDeleteEntity(EntityID));
 		}
 		private void NetReplicatePlayer(Player player) {
-			SendToAll(new S_AddPlayerPacket(
+			SendToAll(new SPAddPlayer(
 				player.EntityID,
 				player.Color.R,
 				player.Color.G,
@@ -89,7 +88,7 @@ namespace RunGun.Server
 			));
 		}
 		private void NetReplicateBullet(Bullet bullet) {
-			SendToAll(new S_AddBulletPacket(
+			SendToAll(new SPAddBullet(
 				bullet.EntityID,
 				bullet.CreatorID,
 				bullet.Direction
@@ -102,7 +101,12 @@ namespace RunGun.Server
 		}
 		#endregion
 
-		public Server(IPEndPoint endpoint) : base(endpoint) {
+		public override void BindTo(IPEndPoint endpoint) {
+			base.BindTo(endpoint);
+			StartListening();
+		}
+
+		public Server() : base() {
 			// init fields
 			Plugins = new PluginManager();
 
@@ -110,11 +114,11 @@ namespace RunGun.Server
 			World = new GameWorld();
 			LoadTestMap();
 			#region Listener Bindings
-			AddListener<C_InputStatePacket>(Protocol.C_InputState, InputStateListener);
-			AddListener<C_PingPacket>(Protocol.C_Ping, PingListener);
-			AddListener<C_ChatPacket>(Protocol.C_ChatMessage, ChatListener);
+			AddListener<CInputState>(Protocol.C_InputState, InputStateListener);
+			AddListener<CPing>(Protocol.C_Ping, PingListener);
+			AddListener<CChat>(Protocol.C_ChatMessage, ChatListener);
 			#endregion
-			StartListening();
+			
 
 			TaskManager.Register(new IntervalTask(GameStateTickRate, NetworkGameStateUpdate));
 
@@ -122,10 +126,10 @@ namespace RunGun.Server
 		~Server() { }
 
 		private void DownloadMap(User user) {
-			S_MapHeader header = new S_MapHeader { };
-			List<S_MapSlice> data = new List<S_MapSlice>();
+			SMapHeader header = new SMapHeader { };
+			List<SMapSlice> data = new List<SMapSlice>();
 			foreach (LevelGeometry geom in World.levelGeometries) {
-				S_MapSlice slice = new S_MapSlice() {
+				SMapSlice slice = new SMapSlice() {
 					X =      (short)geom.Position.X,
 					Y =      (short)geom.Position.Y,
 					Width =  (short)geom.Size.X,
@@ -140,10 +144,10 @@ namespace RunGun.Server
 		}
 		private void DownloadLeaderboardLayout(User user) {
 			// TODO: design and implement leaderboard system
-			S_LeaderboardLayoutHeader header = new S_LeaderboardLayoutHeader {
+			SLeaderboardLayoutHeader header = new SLeaderboardLayoutHeader {
 
 			};
-			List<S_LeaderboardLayoutSlice> data = new List<S_LeaderboardLayoutSlice>();
+			List<SLeaderboardLayoutSlice> data = new List<SLeaderboardLayoutSlice>();
 
 			//foreach (var something in leaderboard) {
 				
@@ -152,7 +156,7 @@ namespace RunGun.Server
 		private void DownloadExistingEntities(User user) {
 			foreach (var ent in World.entities) {
 				if (ent is Bullet bullet) {
-					Send(user, new S_AddBulletPacket(
+					Send(user, new SPAddBullet(
 						bullet.EntityID,
 						bullet.CreatorID,
 						bullet.Direction
@@ -160,7 +164,7 @@ namespace RunGun.Server
 				}
 
 				if (ent is Player player) {
-					Send(user, new S_AddPlayerPacket(
+					Send(user, new SPAddPlayer(
 						player.EntityID,
 						player.Color.R,
 						player.Color.G,
@@ -172,18 +176,18 @@ namespace RunGun.Server
 		}
 
 		#region Listener Methods (Network Bindings)
-		protected override (bool accept, string reason) OnConnectingCheck(INetworkPeer peer, C_ConnectRequestPacket packet) {
+		protected override (bool accept, string reason) OnConnectingCheck(INetworkPeer peer, CConnectRequest packet) {
 			return base.OnConnectingCheck(peer, packet);
 		}
 		protected override void OnUserConnect(User user) {
 			base.OnUserConnect(user);
-			Send(user, new S_ChatPacket(string.Format("[Server] connected to {0} ({1})", ServerName, ListeningEndpoint.ToString())));
+			Send(user, new SPChat(string.Format("[Server] connected to {0} ({1})", ServerName, ListeningEndpoint.ToString())));
 
 			GlobalMessage(user.Nickname + " joined.", ConsoleColor.Gray);
 			DownloadMap(user);
 			DownloadLeaderboardLayout(user);
 			
-			SendToAllExcept(user, new S_PeerJoinPacket(user.NetworkID));
+			SendToAllExcept(user, new SPPeerJoin(user.NetworkID));
 
 			Player player = new Player() {
 				UserNickname = user.Nickname,
@@ -193,7 +197,7 @@ namespace RunGun.Server
 			
 			DownloadExistingEntities(user);
 			SpawnEntity(player);
-			Send(user, new S_AssignPlayerIDPacket(player.EntityID));
+			Send(user, new SPAssignPlayerID(player.EntityID));
 		}
 
 		protected override void OnUserDisconnect(User user) {
@@ -205,23 +209,24 @@ namespace RunGun.Server
 				return;
 			}
 
-			SendToAllExcept(user, new S_PeerLeftPacket(user.NetworkID));
-			SendToAllExcept(user, new S_DeleteEntityPacket(player.EntityID));
+			SendToAllExcept(user, new SPPeerLeft(user.NetworkID));
+			SendToAllExcept(user, new SPDeleteEntity(player.EntityID));
 
 			GlobalMessage(user.Nickname + " left.", ConsoleColor.Gray);
 			World.RemoveEntity(player);
 		}
 
-		void ChatListener(User user, C_ChatPacket packet) {
+		void ChatListener(User user, CChat packet) {
 			// ? will chat string need sanitization later
 			// TODO: test if strings can break stuff by not being sanitized
 			GlobalMessage(user.Nickname + " : "+packet.Message, ConsoleColor.White);
 		}
-		void PingListener(User user, C_PingPacket packet) {
-			Send(user, new S_PingReplyPacket());
+		void PingListener(User user, CPing packet) {
+			Send(user, new SPPingReply());
 			user.KeepAlive = 0;
 		}
-		void InputStateListener(User user, C_InputStatePacket packet) {
+
+		void InputStateListener(User user, CInputState packet) {
 			Player player = GetPlayerOfUser(user);
 
 			//if (player == null) return;
@@ -271,27 +276,36 @@ namespace RunGun.Server
 
 		public void GlobalMessage(string message, ConsoleColor color) {
 			Logging.Out(message, color);
-			SendToAll(new S_ChatPacket(message));
+			SendToAll(new SPChat(message));
 		}
 
 
-		S_GameStateHeader header;
-		List<S_GameStateSlice> states = new List<S_GameStateSlice>();
+		SGameStateHeader header;
+
+
+		List<SGameStateSlice> states = new List<SGameStateSlice>();
 		private void NetworkGameStateUpdate() {
-			var header = new S_GameStateHeader(World.physicsFrameIter);
+			var header = new SGameStateHeader(World.physicsFrameIter);
 
 			states.Clear();
 			//List<S_GameStateSlice> states = new List<S_GameStateSlice>();
 			// TODO: big optimization candidate
 			foreach (var ent in World.GetEntities()) {
 				if (ent is IPhysical phys) {
-					states.Add(new S_GameStateSlice {
+					var newState = new SGameStateSlice {
 						EntityID = phys.EntityID,
 						NextX = phys.NextPosition.X,
 						NextY = phys.NextPosition.Y,
 						VelocityX = phys.Velocity.X,
 						VelocityY = phys.Velocity.Y
-					});
+					};
+
+					// TODO: come up with better flag handler than this.
+					if (ent is Player plr) {
+						newState.Flag0 = (byte)plr.Facing;
+						newState.Flag1 = (byte)plr.Looking;
+					}
+					states.Add(newState);
 				}
 			}
 			SendToAll(header, states.ToArray());

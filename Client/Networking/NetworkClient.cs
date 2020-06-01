@@ -29,6 +29,7 @@ namespace RunGun.Client.Networking
 
 		float reset = 0;
 
+		public IPEndPoint EndPoint;
 
 		UdpClient udpClient;
 		Queue<UdpReceiveResult> messageQueue;
@@ -38,6 +39,9 @@ namespace RunGun.Client.Networking
 		public delegate void EventListener(byte[] bytedata);
 		public event EventListener OnServerMessage;
 
+		public float connectionRetryTimer = 1.0f;
+		public int connectionRetries = 5;
+
 		public NetworkClient() {
 
 			DataSamplesIn = new CircularArray<int>(50);
@@ -46,69 +50,67 @@ namespace RunGun.Client.Networking
 			messageQueue = new Queue<UdpReceiveResult>();
 			udpClient = new UdpClient();
 
-			AddListener<S_ConnectAcceptPacket>(Protocol.S_ConnectOK, (packet) => {
+			AddListener<SPConnectAccept>(Protocol.S_ConnectOK, (packet) => {
 				IsConnected = true;
 				IsConnecting = false;
 			}); 
 		}
-		~NetworkClient() {
-			//udpClient.Close();
-		}
+		~NetworkClient() {}
 
-		[Conditional("v")]
-		void DumpData(byte[] data) {
-			Console.Write("CI: ");
-			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0:X2} ", data[i]);
-			}
-			Console.WriteLine("");
-		}
-		[Conditional("v")]
-		void DumpDataOut(byte[] data) {
-			Console.Write("CO: ");
-			for (int i = 0; i < data.Length; i++) {
-				Console.Write("{0:X2} ", data[i]);
-			}
-			Console.WriteLine("");
-		}
-
-		public void AddListener<T>(Protocol code, Callback<T> method) {
+		public void AddListener<T>(Protocol code, Callback<T> method) where T : new() {
 			OnServerMessage += (bytedata) => {
 				
 				if (bytedata[0] == (byte)code) {
-					method(ByteUtil.Deserialize<T>(bytedata));
+					method(ClassSerializer.Deserialize<T>(bytedata));
 				}
 			};
 		}
-		public void AddListener<T, U>(Protocol code, ListCallback<T, U> method) {
+		public void AddListener<T, U>(Protocol code, ListCallback<T, U> method) where T : new() where U : new() {
 			OnServerMessage += (bytedata) => {
 				if (bytedata[0] == (byte)code) {
-					int headerSize = Marshal.SizeOf(typeof(T));
-					int sliceSize = Marshal.SizeOf(typeof(U));
+					int headerSize = ClassSerializer.GetProfile(typeof(T)).BufferLength;
+					int sliceSize = ClassSerializer.GetProfile(typeof(U)).BufferLength;
 					int numSlices = (bytedata.Length - headerSize) / sliceSize;
 					byte[] headerData = new byte[headerSize];
 					Array.Copy(bytedata, 0, headerData, 0, headerSize);
-					T header = ByteUtil.Deserialize<T>(headerData);
+					T header = ClassSerializer.Deserialize<T>(headerData);
 					List<U> slices = new List<U>();
 
 					for (int i = 0; i < numSlices; i++) {
 						byte[] sliceData = new byte[sliceSize];
 						Array.Copy(bytedata, headerSize + (sliceSize * i), sliceData, 0, sliceSize);
-						slices.Add(ByteUtil.Deserialize<U>(sliceData));
+						slices.Add(ClassSerializer.Deserialize<U>(sliceData));
 					}
 					method(header, slices);
 				}
 			};
 		}
-		public void Connect(IPEndPoint endpoint, string nickname) {
-			udpClient.Connect(endpoint);
-			StartListeningThread();
-			IsConnecting = true;
-			Send(new C_ConnectRequestPacket(nickname));
-			Console.WriteLine("Lets GO");
+
+		private bool TryEstablishUdpConnection(IPEndPoint endpoint) {
+			try {
+				udpClient.Connect(endpoint);
+			} catch (Exception) {
+				return false;
+			}
+			return true;
+		}
+
+		public bool Connect(IPEndPoint endpoint, string nickname) {
+			for (int i = 0; i < connectionRetries; i++) {
+				bool result = TryEstablishUdpConnection(endpoint);
+
+				if (result == true) {
+					StartListeningThread();
+					IsConnecting = true;
+					Send(new CConnectRequest(nickname));
+					Console.WriteLine("Lets GO");
+					return true;
+				}	
+			}
+			return false;
 		}
 		public void Disconnect() {
-			Send(new C_DisconnectPacket());
+			Send(new CDisconnect());
 			isListenThreadRunning = false;
 			IsConnecting = false;
 			IsConnected = false;
@@ -117,14 +119,14 @@ namespace RunGun.Client.Networking
 			if (IsConnecting == false && IsConnected == false)
 				return;
 			
-			byte[] data = ByteUtil.Serialize(packet);
+			byte[] data = ClassSerializer.Serialize(packet);
 			
 			try {
 				if (udpClient != null) {
 					DataCountOut += data.Length;
 					DataTotalOut += data.Length;
 					udpClient.Send(data, data.Length);
-					DumpDataOut(data);
+					ByteUtil.DumpNum(data);
 				}
 			} catch (SocketException exception) {
 				Console.WriteLine(exception.ToString());
@@ -136,18 +138,18 @@ namespace RunGun.Client.Networking
 			if (IsConnecting == false && IsConnected == false)
 				return;
 
-			int headerSize = Marshal.SizeOf(typeof(T));
-			int sliceSize = Marshal.SizeOf(typeof(U));
+			int headerSize = ClassSerializer.GetProfile(typeof(T)).BufferLength;
+			int sliceSize = ClassSerializer.GetProfile(typeof(U)).BufferLength;
 			byte[] datagram = new byte[headerSize + (sliceSize * slices.Length)];
 
-			byte[] header = ByteUtil.Serialize(packet);
+			byte[] header = ClassSerializer.Serialize(packet);
 			ByteUtil.Put(0, header, ref datagram);
 
 			for (int i = 0; i < slices.Length; i++) {
-				byte[] slicedata = ByteUtil.Serialize(slices[i]);
+				byte[] slicedata = ClassSerializer.Serialize(slices[i]);
 				ByteUtil.Put(headerSize + (i * sliceSize), slicedata, ref datagram);
 			}
-			DumpDataOut(datagram);
+			ByteUtil.DumpNum(datagram);
 
 			try {
 				DataCountOut += datagram.Length;
@@ -163,7 +165,19 @@ namespace RunGun.Client.Networking
 
 		int fart = 0;
 		public void Update(float dt) {
+			if (IsConnecting) {
+				connectionRetryTimer += dt;
+
+				if (connectionRetryTimer > 1) {
+					//TryEstablishUdpConnection();
+					connectionRetryTimer = 0;
+
+				}
+			}
+			
 			ReadPacketQueue();
+
+
 
 			reset += dt;
 
@@ -196,6 +210,9 @@ namespace RunGun.Client.Networking
 					}
 				} catch (Exception ex) {
 					Console.WriteLine("CLIENT NETWORK ERR: " + ex.Message + " " + ex.Source + " " + ex.StackTrace);
+					throw ex;
+				} finally {
+
 				}
 			}
 		}
@@ -206,7 +223,7 @@ namespace RunGun.Client.Networking
 			for (int i = 0; i < messageQueue.Count; i++) {
 				var recv = messageQueue.Dequeue();
 
-				DumpData(recv.Buffer);
+				ByteUtil.DumpNum(recv.Buffer);
 				OnServerMessage?.Invoke(recv.Buffer);
 			}
 		}

@@ -4,49 +4,55 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:monoGameControls="clr-namespace:Editor.MonoGameControls"
+    xmlns:monoGameControls="clr-namespace:MonoGameControls"
     xmlns:local="clr-namespace:Editor"
     mc:Ignorable="d"
     Title="Editor" 
     WindowStartupLocation="CenterScreen"
     Width="800"
-    Height="480">
+    Height="480"
+	KeyDown="Window_KeyDown"
+>
 	<Window.DataContext>
-		<local:MainWindowViewModel />
+		<local:GraphicsWindow/>
 	</Window.DataContext>
 
 	<DockPanel LastChildFill="True">
 		<Menu DockPanel.Dock="Top">
-			<MenuItem Header="_File">
-				<MenuItem Header="_New" />
-				<MenuItem Header="_Open..." />
-				<Separator />
-				<MenuItem Header="_Save" />
-				<MenuItem Header="Save _As..." />
-				<Separator />
-				<MenuItem Header="E_xit" />
+			<MenuItem Header="File">
+				<MenuItem Header="New"  Click="Dock_File_New"/>
+				<MenuItem Header="Open" Click="Dock_File_Open"/>
+				<MenuItem Header="Save" Click="Dock_File_Save"/>
+				<MenuItem Header="Open File Location" Click="Dock_File_OpenLocation"/>
 			</MenuItem>
-			<MenuItem Header="_Edit">
-				<MenuItem Header="_Undo" />
-				<MenuItem Header="_Redo" />
+			<MenuItem Header="Edit">
+				<MenuItem Header="Undo" Click="Dock_Edit_Undo"/>
+				<MenuItem Header="Redo" Click="Dock_Edit_Redo"/>
 				<Separator />
-				<MenuItem Header="Cu_t" />
-				<MenuItem Header="_Copy" />
-				<MenuItem Header="_Paste" />
-				<MenuItem Header="_Delete" />
+				<MenuItem Header="Cut"  Click="Dock_Edit_Cut"/>
+				<MenuItem Header="Copy" Click="Dock_Edit_Copy"/>
+				<MenuItem Header="Paste" Click="Dock_Edit_Paste" />
+				<MenuItem Header="Delete" Click="Dock_Edit_Delete"/>
 				<Separator />
-				<MenuItem Header="Select _All" />
+				<MenuItem Header="Select All" />
 			</MenuItem>
+			
 			<MenuItem Header="_Settings">
 
 			</MenuItem>
-			<MenuItem Header="_Help">
-				<MenuItem Header="_Sorry bud..." />
+			<MenuItem Header="Tools" >
+				<MenuItem Header="Insert Geometry" Click="ToolSelect_Insert"/>
+				<MenuItem Header="(M)ove" Click="ToolSelect_Move"/>
+				<MenuItem Header="(R)esize" Click="ToolSelect_Resize"/>
+				<MenuItem Header="(C)olor" Click="ToolSelect_Color"/>
 			</MenuItem>
+			<MenuItem Header="Help">
+				<MenuItem Header="Sorry bud..." />
+			</MenuItem>
+			<Separator/>
+			
 		</Menu>
 
-		<monoGameControls:MonoGameContentControl >
-			
-		</monoGameControls:MonoGameContentControl>
+		<monoGameControls:MonoGameContentControl x:Name="MGCC" Margin="0,0,0,16" />
 	</DockPanel>
 </Window>

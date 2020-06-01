@@ -44,14 +44,14 @@ namespace RunGun.Core.Game.Guns
 
 		public void PullTrigger() { }
 
-		void Fire() { }
+		//void Fire() { }
 
-		struct menuStatistics
+		struct MenuStatistics
 		{
-			string damage;
-			string ammoType;
-			AccuracyStat accuracy;
-			AccuracyStat penetration;
+			//string damage;
+			//string ammoType;
+			//AccuracyStat accuracy;
+			//AccuracyStat penetration;
 		}
 	}
 

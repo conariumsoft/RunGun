@@ -21,7 +21,7 @@ namespace RunGun.Core.Networking
 	}
 	public interface IPacket : IPacketHeader  { }
 
-	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
+	[Packet]
 	public abstract class BasePacket : IPacket
 	{
 		//[FieldOffset(0)] public readonly Protocol Code;
@@ -83,8 +83,8 @@ namespace RunGun.Core.Networking
 		event Listener OnUserMessage;
 		void StartListening();
 		void StopListening();
-		void AddListener<T>(Protocol code, Callback<T> method) where T :  IPacket;
-		void AddListener<T, U>(Protocol code, ListCallback<T, U> method) where T : IPacketHeader where U : IDataSlice;
+		void AddListener<T>(Protocol code, Callback<T> method) where T : IPacket, new();
+		void AddListener<T, U>(Protocol code, ListCallback<T, U> method) where T : IPacketHeader, new() where U : IDataSlice, new();
 		void Update(float deltaSeconds);
 		void Send<T>(INetworkPeer peer, T packet) where T : IPacket;
 		void SendToAll<T>(T packet) where T : IPacket;
@@ -96,7 +96,7 @@ namespace RunGun.Core.Networking
 	public interface IClient
 	{
 		bool IsConnected { get; }
-		void Connect(IPEndPoint endpoint, string nickname);
+		bool Connect(IPEndPoint endpoint, string nickname);
 		//void AddListener<T>(byte code, Callback<T> callback) where T: IPacket;
 		void Send<T>(T packet) where T : IPacket;
 		void Send<T, U>(T packet, U[] slices) where T : IPacketHeader where U : IDataSlice;
